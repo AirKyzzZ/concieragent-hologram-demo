@@ -22,12 +22,12 @@ export class TravelAgent {
     const mcpBasePath = path.resolve(__dirname, "../../mcp_travelassistant/servers");
     const serpApiKey = process.env.SERPAPI_KEY || "";
 
-    const servers = [
+    const servers: Array<{ path: string; env: Record<string, string> }> = [
       { path: path.join(mcpBasePath, "flight_server/flight_server.py"), env: { SERPAPI_KEY: serpApiKey } },
       { path: path.join(mcpBasePath, "hotel_server/hotel_server.py"), env: { SERPAPI_KEY: serpApiKey } },
       { path: path.join(mcpBasePath, "event_server/event_server.py"), env: { SERPAPI_KEY: serpApiKey } },
-      { path: path.join(mcpBasePath, "geocoder_server/geocoder_server.py"), env: {} },
-      { path: path.join(mcpBasePath, "weather_server/weather_server.py"), env: {} },
+      { path: path.join(mcpBasePath, "geocoder_server/geocoder_server.py"), env: {} as Record<string, string> },
+      { path: path.join(mcpBasePath, "weather_server/weather_server.py"), env: {} as Record<string, string> },
       { path: path.join(mcpBasePath, "finance_server/finance_search_server.py"), env: { SERPAPI_KEY: serpApiKey } },
     ];
 
@@ -100,6 +100,11 @@ export class TravelAgent {
 
         if (message.tool_calls && message.tool_calls.length > 0) {
           for (const toolCall of message.tool_calls) {
+            // OpenAI tool calls always have a 'function' property in the standard format
+            if (!('function' in toolCall)) {
+              console.warn('Unexpected tool call format:', toolCall);
+              continue;
+            }
             const toolName = toolCall.function.name;
             const toolArgs = JSON.parse(toolCall.function.arguments);
             const client = this.toolMap.get(toolName);

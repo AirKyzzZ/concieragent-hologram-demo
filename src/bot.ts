@@ -1,12 +1,13 @@
 import express from 'express'
 import { TravelAgent } from './agent/TravelAgent'
+import path from 'path'
 
 const app = express()
 const port = 4001
 const agent = new TravelAgent()
 
-// Serve static files (like logo.png) from the current directory
-app.use(express.static('.'))
+// Serve static files (like logo.png) from the project root
+app.use(express.static(path.resolve(__dirname, '../..')))
 
 // VS Agent Admin API URL (default port 3000)
 const VS_AGENT_URL = process.env.VS_AGENT_URL || 'http://localhost:3000'
