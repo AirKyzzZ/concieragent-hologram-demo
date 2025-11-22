@@ -49,8 +49,8 @@ docker run -d \
   -p 3001:3001 \
   -p 3000:3000 \
   -e AGENT_PUBLIC_DID=did:web:${NGROK_URL} \
-  -e AGENT_LABEL="My Hologram Chatbot" \
-  -e AGENT_INVITATION_IMAGE_URL=https://hologram.zone/images/ico-hologram.png \
+  -e AGENT_LABEL="Concieragent" \
+  -e AGENT_INVITATION_IMAGE_URL=https://${NGROK_URL}/logo.png \
   -e EVENTS_BASE_URL=http://${LOCAL_IP}:4001 \
   --name vs-agent \
   io2060/vs-agent:dev

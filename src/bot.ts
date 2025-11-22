@@ -1,7 +1,12 @@
 import express from 'express'
+import { TravelAgent } from './agent/TravelAgent'
 
 const app = express()
 const port = 4001
+const agent = new TravelAgent()
+
+// Serve static files (like logo.png) from the current directory
+app.use(express.static('.'))
 
 // VS Agent Admin API URL (default port 3000)
 const VS_AGENT_URL = process.env.VS_AGENT_URL || 'http://localhost:3000'
@@ -17,14 +22,14 @@ app.post('/message-received', async (req, res) => {
 
     console.log(`📨 Message received from connection ${connectionId}: ${content}`)
 
-    // Simple test response - just echo back with a test message
-    const testResponse = "Hello! This is a test message from your Hologram chatbot. I received your message!"
+    // Use TravelAgent to generate response
+    const agentResponse = await agent.processMessage(content, connectionId)
 
     // Send response back to the user via VS Agent Admin API
     const responseMessage = {
       type: 'text',
       connectionId: connectionId,
-      content: testResponse
+      content: agentResponse
     }
 
     const response = await fetch(`${VS_AGENT_URL}/v1/message`, {
@@ -50,15 +55,24 @@ app.post('/message-received', async (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'hologram-chatbot' })
+  res.json({ status: 'ok', service: 'concieragent' })
 })
 
-app.listen(port, () => {
-  console.log(`🤖 Hologram Chatbot server listening at http://localhost:${port}`)
+app.listen(port, async () => {
+  console.log(`🤖 Concieragent server listening at http://localhost:${port}`)
   console.log(`📡 VS Agent URL: ${VS_AGENT_URL}`)
-  console.log(`✅ Ready to receive messages!`)
+  
+  console.log('🔄 Initializing Travel Agent (connecting to MCP servers)...')
+  await agent.initialize()
+  console.log('✅ Travel Agent ready!')
 })
 
 // Keep process alive
 process.stdin.resume()
 
+// Handle cleanup on exit
+process.on('SIGINT', async () => {
+  console.log('🛑 Shutting down...')
+  await agent.cleanup()
+  process.exit(0)
+})

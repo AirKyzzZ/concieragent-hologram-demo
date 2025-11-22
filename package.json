@@ -8,11 +8,19 @@
     "build": "tsc",
     "dev": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/bot.ts"
   },
-  "keywords": ["hologram", "chatbot", "vs-agent"],
+  "keywords": [
+    "hologram",
+    "chatbot",
+    "vs-agent"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2"
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
+    "openai": "^6.9.1",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
@@ -21,4 +29,3 @@
     "typescript": "^5.3.3"
   }
 }
-
