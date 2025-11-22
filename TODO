@@ -1,0 +1,7 @@
+☐ Fix weather api
+☐ Add Credential - passport verification
+☐ Make sure using MCP have the priority and are used and not the llm making his own research because mcp tools are more accurate
+☐ Don't ask the infos it already has / the user provided / better use of the general context of the disciussion
+☐ Make a welcome message i18n
+☐ Polish ux and better base prompt context
+☐ Implement CI/CD pipeline 
