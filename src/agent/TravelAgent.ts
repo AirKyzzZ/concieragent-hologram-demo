@@ -1,14 +1,20 @@
-import { OpenAI } from "openai";
 import { McpClient } from "./McpClient";
 import path from "path";
 import dotenv from "dotenv";
-import { ChatCompletionMessageParam, ChatCompletionTool } from "openai/resources/chat/completions";
+import { 
+  createProvider, 
+  getAvailableProviders,
+  type LLMProvider, 
+  type LLMMessage, 
+  type LLMTool,
+  type LLMProviderType
+} from "../providers";
 
 dotenv.config();
 
 // Conversation context storage per connection
 interface ConversationContext {
-  messages: ChatCompletionMessageParam[];
+  messages: LLMMessage[];
   extractedInfo: ExtractedUserInfo;
   lastUpdated: number;
 }
@@ -27,9 +33,9 @@ interface ExtractedUserInfo {
 }
 
 export class TravelAgent {
-  private openai: OpenAI;
+  private provider: LLMProvider;
   private mcpClients: McpClient[] = [];
-  private tools: ChatCompletionTool[] = [];
+  private tools: LLMTool[] = [];
   private toolMap: Map<string, McpClient> = new Map();
   // Store conversation history per connection
   private conversationContexts: Map<string, ConversationContext> = new Map();
@@ -42,10 +48,17 @@ export class TravelAgent {
   private readonly MAX_TOTAL_CONTEXT_CHARS = 24000;  // ~6000 tokens total context
   private readonly MAX_HISTORY_CHARS = 8000;  // ~2000 tokens for history
 
-  constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+  constructor(providerType?: LLMProviderType) {
+    // Log available providers
+    const available = getAvailableProviders();
+    console.log('📋 Available LLM providers:');
+    for (const p of available) {
+      console.log(`   ${p.configured ? '✅' : '⚪'} ${p.type}${p.configured ? '' : ' (not configured)'}`);
+    }
+    
+    // Create the provider
+    this.provider = createProvider(providerType);
+    console.log(`🤖 Using LLM: ${this.provider.name} (${this.provider.model})`);
   }
 
   /**
@@ -207,10 +220,9 @@ export class TravelAgent {
   /**
    * Trim conversation history to fit within token limits
    */
-  private trimHistoryToFit(messages: ChatCompletionMessageParam[]): ChatCompletionMessageParam[] {
+  private trimHistoryToFit(messages: LLMMessage[]): LLMMessage[] {
     let totalChars = messages.reduce((sum, msg) => {
-      const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-      return sum + (content?.length || 0);
+      return sum + (msg.content?.length || 0);
     }, 0);
 
     // If within limits, return as-is
@@ -225,8 +237,7 @@ export class TravelAgent {
     while (totalChars > this.MAX_HISTORY_CHARS && trimmed.length > 2) {
       // Remove the second message (after system prompt)
       const removed = trimmed.splice(1, 1)[0];
-      const removedContent = typeof removed.content === 'string' ? removed.content : JSON.stringify(removed.content);
-      totalChars -= removedContent?.length || 0;
+      totalChars -= removed.content?.length || 0;
     }
 
     console.log(`📏 History trimmed to ${trimmed.length} messages, ${totalChars} chars`);
@@ -323,13 +334,11 @@ export class TravelAgent {
             // Sanitize the schema to fix any invalid structures
             const sanitizedSchema = this.sanitizeToolSchema(tool.inputSchema);
             
+            // Use provider-agnostic LLMTool format
             this.tools.push({
-              type: "function",
-              function: {
-                name: tool.name,
-                description: tool.description,
-                parameters: sanitizedSchema, 
-              },
+              name: tool.name,
+              description: tool.description || '',
+              parameters: sanitizedSchema, 
             });
             this.toolMap.set(tool.name, client);
             console.log(`  ✅ Registered tool: ${tool.name}`);
@@ -583,7 +592,8 @@ Remember: You exist to demonstrate MCP tools. ALWAYS use them for data!`;
     // Get trimmed history to prevent token overflow
     const historyMessages = this.trimHistoryToFit(context.messages.slice(-this.MAX_HISTORY_MESSAGES));
     
-    const messages: ChatCompletionMessageParam[] = [
+    // Use provider-agnostic message format
+    const messages: LLMMessage[] = [
       { role: "system", content: systemPrompt },
       ...historyMessages,
       { role: "user", content: userMessage }
@@ -606,25 +616,25 @@ Remember: You exist to demonstrate MCP tools. ALWAYS use them for data!`;
         }
         
         try {
-          const response = await this.openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: messages,
-            tools: this.tools.length > 0 ? this.tools : undefined,
-          });
+          // Use provider abstraction for LLM calls
+          const response = await this.provider.chat(
+            messages,
+            this.tools.length > 0 ? this.tools : undefined
+          );
 
-          const message = response.choices[0].message;
-          messages.push(message);
+          // Add assistant message to conversation (with tool calls if any)
+          const assistantMessage: LLMMessage = {
+            role: 'assistant',
+            content: response.content || '',
+            toolCalls: response.toolCalls.length > 0 ? response.toolCalls : undefined,
+          };
+          messages.push(assistantMessage);
           retryCount = 0; // Reset retry count on success
 
-          if (message.tool_calls && message.tool_calls.length > 0) {
-            for (const toolCall of message.tool_calls) {
-              // OpenAI tool calls always have a 'function' property in the standard format
-              if (!('function' in toolCall)) {
-                console.warn('Unexpected tool call format:', toolCall);
-                continue;
-              }
-              const toolName = toolCall.function.name;
-              const toolArgs = JSON.parse(toolCall.function.arguments);
+          if (response.toolCalls && response.toolCalls.length > 0) {
+            for (const toolCall of response.toolCalls) {
+              const toolName = toolCall.name;
+              const toolArgs = toolCall.arguments;
               const client = this.toolMap.get(toolName);
 
               if (client) {
@@ -680,35 +690,41 @@ Remember: You exist to demonstrate MCP tools. ALWAYS use them for data!`;
                     }
                   }
 
+                  // Add tool result message (provider-agnostic format)
                   messages.push({
                     role: "tool",
-                    tool_call_id: toolCall.id,
-                    content: finalContent || "Tool executed successfully but returned no content"
+                    content: finalContent || "Tool executed successfully but returned no content",
+                    toolCallId: toolCall.id,
                   });
                 } catch (err: any) {
                    console.error(`❌ Tool execution failed: ${err.message}`);
                    messages.push({
                     role: "tool",
-                    tool_call_id: toolCall.id,
-                    content: `Error executing tool: ${err.message}`
+                    content: `Error executing tool: ${err.message}`,
+                    toolCallId: toolCall.id,
                   });
                 }
               } else {
                 messages.push({
                   role: "tool",
-                  tool_call_id: toolCall.id,
-                  content: "Tool not found"
+                  content: "Tool not found",
+                  toolCallId: toolCall.id,
                 });
               }
             }
           } else {
             keepGoing = false;
-            finalResponse = message.content || "I'm sorry, I couldn't generate a response.";
+            finalResponse = response.content || "I'm sorry, I couldn't generate a response.";
           }
         } catch (apiError: any) {
           // Handle rate limit and token overflow errors
-          if (apiError.code === 'rate_limit_exceeded' || apiError.status === 429) {
-            console.warn(`⚠️ Rate limit hit. Attempt ${retryCount + 1}/${maxRetries + 1}`);
+          const isRateLimit = apiError.code === 'rate_limit_exceeded' || 
+                             apiError.status === 429 ||
+                             apiError.message?.includes('rate') ||
+                             apiError.message?.includes('token');
+          
+          if (isRateLimit) {
+            console.warn(`⚠️ Rate limit hit (${this.provider.name}). Attempt ${retryCount + 1}/${maxRetries + 1}`);
             
             if (retryCount < maxRetries) {
               retryCount++;
@@ -717,7 +733,7 @@ Remember: You exist to demonstrate MCP tools. ALWAYS use them for data!`;
               console.log('📏 Aggressively trimming context to retry...');
               
               // Remove older tool results (they're usually the largest)
-              const trimmedMessages: ChatCompletionMessageParam[] = [];
+              const trimmedMessages: LLMMessage[] = [];
               let keptToolResults = 0;
               const maxToolResults = 2; // Keep only last 2 tool results
               
@@ -727,10 +743,9 @@ Remember: You exist to demonstrate MCP tools. ALWAYS use them for data!`;
                 if (msg.role === 'tool') {
                   if (keptToolResults < maxToolResults) {
                     // Truncate tool content further
-                    const content = typeof msg.content === 'string' ? msg.content : '';
                     trimmedMessages.unshift({
                       ...msg,
-                      content: content.substring(0, 2000) + (content.length > 2000 ? '\n[... truncated]' : '')
+                      content: msg.content.substring(0, 2000) + (msg.content.length > 2000 ? '\n[... truncated]' : '')
                     });
                     keptToolResults++;
                   }
