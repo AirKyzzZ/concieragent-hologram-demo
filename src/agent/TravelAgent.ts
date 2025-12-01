@@ -19,6 +19,29 @@ interface ConversationContext {
   lastUpdated: number;
 }
 
+// Supported languages
+type SupportedLanguage = 'en' | 'es' | 'fr';
+
+// Language detection patterns
+const LANGUAGE_PATTERNS: { lang: SupportedLanguage; patterns: RegExp[] }[] = [
+  {
+    lang: 'es',
+    patterns: [
+      /\b(hola|buenos?\s*d[ií]as?|buenas?\s*tardes?|buenas?\s*noches?|gracias|por\s*favor|quiero|necesito|busco|viaje|vuelo|hotel|ayuda|cu[aá]nto|d[oó]nde|c[oó]mo|qu[eé]|puede|podr[ií]a|quisiera|estoy|tengo|voy|me\s*gustar[ií]a)\b/i,
+      /[¿¡]/,  // Spanish punctuation
+      /\b(aeropuerto|reserva|habitaci[oó]n|precio|fecha|desde|hasta|para|con|sin|muy|también|ahora|después|antes|mañana|semana|mes|año)\b/i,
+    ]
+  },
+  {
+    lang: 'fr',
+    patterns: [
+      /\b(bonjour|bonsoir|salut|merci|s[']?il\s*vous\s*pla[iî]t|je\s*veux|je\s*voudrais|j[']?aimerais|cherche|voyage|vol|h[oô]tel|aide|combien|o[uù]|comment|quoi|quel|quelle|pouvez|pourriez|peux|suis|ai|vais)\b/i,
+      /[àâäéèêëïîôùûüÿœæç]/i,  // French accents
+      /\b(a[ée]roport|r[ée]servation|chambre|prix|date|depuis|jusqu[']?[aà]|pour|avec|sans|tr[eè]s|aussi|maintenant|apr[eè]s|avant|demain|semaine|mois|ann[ée]e)\b/i,
+    ]
+  }
+];
+
 // Information extracted from the conversation
 interface ExtractedUserInfo {
   name?: string;
@@ -30,6 +53,7 @@ interface ExtractedUserInfo {
   partySize?: number;
   interests?: string[];
   recentSearches?: string[];
+  language?: SupportedLanguage;  // Detected language
 }
 
 export class TravelAgent {
@@ -432,11 +456,18 @@ export class TravelAgent {
       info.partySize = parseInt(partyMatch[1]);
     }
     
-    // Extract interests
+    // Extract interests (multilingual)
     const interests = [
+      // English
       'beach', 'mountains', 'culture', 'history', 'food', 'nightlife', 'shopping', 
       'adventure', 'relaxation', 'spa', 'hiking', 'diving', 'skiing', 'museum',
-      'music', 'art', 'nature', 'wildlife', 'photography', 'sports'
+      'music', 'art', 'nature', 'wildlife', 'photography', 'sports',
+      // Spanish
+      'playa', 'montaña', 'cultura', 'historia', 'comida', 'gastronomía', 'compras',
+      'aventura', 'relajación', 'senderismo', 'buceo', 'esquí', 'museo', 'música',
+      // French
+      'plage', 'montagne', 'gastronomie', 'cuisine', 'shopping', 'détente',
+      'randonnée', 'plongée', 'ski', 'musée', 'musique', 'photographie'
     ];
     for (const interest of interests) {
       if (lowerMsg.includes(interest)) {
@@ -446,6 +477,48 @@ export class TravelAgent {
         }
       }
     }
+    
+    // Detect language if not already set
+    if (!info.language) {
+      info.language = this.detectLanguage(userMessage);
+    }
+  }
+
+  /**
+   * Detect language from user message
+   */
+  private detectLanguage(message: string): SupportedLanguage {
+    for (const { lang, patterns } of LANGUAGE_PATTERNS) {
+      for (const pattern of patterns) {
+        if (pattern.test(message)) {
+          console.log(`🌍 Detected language: ${lang}`);
+          return lang;
+        }
+      }
+    }
+    return 'en'; // Default to English
+  }
+
+  /**
+   * Get language-specific instructions
+   */
+  private getLanguageInstructions(lang: SupportedLanguage): string {
+    const instructions: Record<SupportedLanguage, string> = {
+      en: `LANGUAGE: Respond in English.`,
+      es: `LANGUAGE: Respond in SPANISH (Español).
+- Use formal "usted" form for politeness
+- Use local Spanish terms for travel (vuelo, hotel, reserva, etc.)
+- Format dates as DD/MM/YYYY (European style)
+- Use euros (€) as default currency for European destinations, dollars ($) for Americas
+- Be warm and courteous in tone`,
+      fr: `LANGUAGE: Respond in FRENCH (Français).
+- Use formal "vous" form for politeness  
+- Use proper French travel terminology (vol, hôtel, réservation, etc.)
+- Format dates as DD/MM/YYYY (European style)
+- Use euros (€) as default currency for European destinations
+- Maintain an elegant and professional tone`
+    };
+    return instructions[lang];
   }
 
   /**
@@ -454,6 +527,7 @@ export class TravelAgent {
   private buildSystemPrompt(context: ConversationContext): string {
     const info = context.extractedInfo;
     const currentDate = new Date().toISOString().split('T')[0];
+    const userLanguage = info.language || 'en';
     
     let contextSection = "";
     if (Object.keys(info).length > 0) {
@@ -465,12 +539,23 @@ ${info.budget?.amount ? `- Budget: $${info.budget.amount} ${info.budget.currency
 ${info.partySize ? `- Party size: ${info.partySize} people` : ''}
 ${info.interests?.length ? `- Interests: ${info.interests.join(', ')}` : ''}
 ${info.currentLocation ? `- Current location: ${info.currentLocation}` : ''}
+${info.language ? `- User language: ${info.language}` : ''}
 `.trim();
     }
 
-    return `You are CONCIERAGENT, a premium travel concierge AI assistant for the Hologram app, demonstrating the power of MCP (Model Context Protocol) tools.
+    return `You are CONCIERAGENT, a premium multilingual travel concierge AI assistant for the Hologram app, demonstrating the power of MCP (Model Context Protocol) tools.
 
 CURRENT DATE: ${currentDate}
+
+=== LANGUAGE & LOCALIZATION ===
+
+${this.getLanguageInstructions(userLanguage)}
+
+IMPORTANT: 
+- ALWAYS respond in the user's language (detected: ${userLanguage})
+- If user switches language mid-conversation, switch your response language too
+- Keep tool parameters in English (city names can be localized in response)
+- Adapt cultural context (currencies, date formats, travel preferences) to user's region
 
 ${contextSection}
 
@@ -537,7 +622,7 @@ FINANCE:
    - If user says "next weekend", calculate the dates
    - If user says "a week", assume 7 days
    - If no party size mentioned, assume 1-2 adults
-   - Default to user's currency if mentioned, otherwise USD
+   - Default to user's currency based on their language/region
 
 3. USE CONVERSATION CONTEXT
    - Remember destinations, dates, preferences from earlier messages
@@ -559,24 +644,13 @@ FINANCE:
 2. BE CONCISE BUT COMPLETE
    - Lead with the most important information
    - Include prices, dates, key details
-   - Format numbers clearly (e.g., "$1,234" not "1234")
+   - Format numbers clearly with local conventions
 
 3. SHOW YOUR WORK
-   - Briefly mention which tool you used
+   - Briefly mention which tool you used (in user's language)
    - This demonstrates MCP capabilities
 
-=== EXAMPLE BEHAVIOR ===
-
-User: "What's the weather in Tokyo?"
-WRONG: "Tokyo typically has warm summers and mild winters..."
-RIGHT: *Call get_current_conditions("Tokyo, Japan")* then report actual data
-
-User: "Find me flights from NYC"
-(If user previously mentioned Paris as destination)
-WRONG: "Where would you like to fly to?"
-RIGHT: *Call search_flights("JFK", "CDG", ...)* using context
-
-Remember: You exist to demonstrate MCP tools. ALWAYS use them for data!`;
+Remember: You exist to demonstrate MCP tools. ALWAYS use them for data! Respond in ${userLanguage === 'es' ? 'SPANISH' : userLanguage === 'fr' ? 'FRENCH' : 'ENGLISH'}!`;
   }
 
   async processMessage(userMessage: string, connectionId: string): Promise<string> {
@@ -825,6 +899,78 @@ Remember: You exist to demonstrate MCP tools. ALWAYS use them for data!`;
         console.log(`🧹 Expired context removed for ${connectionId}`);
       }
     }
+  }
+
+  /**
+   * Get welcome message in the appropriate language
+   */
+  getWelcomeMessage(language?: SupportedLanguage): string {
+    const lang = language || 'en';
+    
+    const welcomeMessages: Record<SupportedLanguage, string> = {
+      en: `Welcome to Concieragent! 
+
+I'm your personal travel concierge, powered by MCP (Model Context Protocol) for real-time travel data.
+
+I can help you with:
+- Flight searches and bookings
+- Hotel recommendations  
+- Weather forecasts for your destination
+- Local events and activities
+- Currency conversions
+
+Where would you like to travel? Just tell me your destination and dates, and I'll find the best options for you!`,
+
+      es: `¡Bienvenido a Concieragent!
+
+Soy tu conserje de viajes personal, impulsado por MCP (Model Context Protocol) para datos de viaje en tiempo real.
+
+Puedo ayudarte con:
+- Búsqueda y reserva de vuelos
+- Recomendaciones de hoteles
+- Pronósticos del tiempo para tu destino
+- Eventos y actividades locales
+- Conversiones de moneda
+
+¿A dónde te gustaría viajar? Solo dime tu destino y fechas, ¡y encontraré las mejores opciones para ti!`,
+
+      fr: `Bienvenue sur Concieragent !
+
+Je suis votre concierge de voyage personnel, propulsé par MCP (Model Context Protocol) pour des données de voyage en temps réel.
+
+Je peux vous aider avec :
+- Recherche et réservation de vols
+- Recommandations d'hôtels
+- Prévisions météo pour votre destination
+- Événements et activités locaux
+- Conversions de devises
+
+Où souhaitez-vous voyager ? Indiquez-moi simplement votre destination et vos dates, et je trouverai les meilleures options pour vous !`
+    };
+
+    return welcomeMessages[lang];
+  }
+
+  /**
+   * Detect language from a message and return appropriate welcome
+   */
+  getWelcomeMessageForUser(userMessage?: string): string {
+    if (userMessage) {
+      const detectedLang = this.detectLanguage(userMessage);
+      return this.getWelcomeMessage(detectedLang);
+    }
+    return this.getWelcomeMessage('en');
+  }
+
+  /**
+   * Get all supported languages
+   */
+  getSupportedLanguages(): { code: SupportedLanguage; name: string }[] {
+    return [
+      { code: 'en', name: 'English' },
+      { code: 'es', name: 'Español' },
+      { code: 'fr', name: 'Français' },
+    ];
   }
 
   async cleanup() {

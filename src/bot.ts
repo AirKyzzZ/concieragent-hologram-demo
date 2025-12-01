@@ -77,6 +77,58 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'concieragent' })
 })
 
+// Get welcome message (can be used by frontend)
+app.get('/welcome', (req, res) => {
+  const lang = req.query.lang as string | undefined
+  const validLangs = ['en', 'es', 'fr']
+  const language = validLangs.includes(lang || '') ? lang as 'en' | 'es' | 'fr' : 'en'
+  
+  res.json({
+    message: agent.getWelcomeMessage(language),
+    language,
+    supportedLanguages: agent.getSupportedLanguages()
+  })
+})
+
+// POST /connection-established - Handle new connections with welcome message
+app.post('/connection-established', async (req, res) => {
+  try {
+    const connectionId = req.body.connectionId
+    const preferredLanguage = req.body.language || 'en'
+    
+    console.log(`🤝 New connection established: ${connectionId}`)
+    
+    // Get localized welcome message
+    const welcomeMessage = agent.getWelcomeMessage(preferredLanguage)
+    
+    // Send welcome message to the user via VS Agent Admin API
+    const responseMessage = {
+      type: 'text',
+      connectionId: connectionId,
+      content: welcomeMessage
+    }
+
+    const response = await fetch(`${VS_AGENT_URL}/v1/message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(responseMessage)
+    })
+
+    if (!response.ok) {
+      console.error(`❌ Failed to send welcome message: ${response.statusText}`)
+    } else {
+      console.log(`✅ Sent welcome message to connection ${connectionId} (${preferredLanguage})`)
+    }
+
+    res.status(200).json({ success: true, language: preferredLanguage })
+  } catch (error) {
+    console.error('❌ Error sending welcome message:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 app.listen(port, () => {
   console.log(`🤖 Concieragent server listening at http://localhost:${port}`)
   console.log(`📡 VS Agent URL: ${VS_AGENT_URL}`)
