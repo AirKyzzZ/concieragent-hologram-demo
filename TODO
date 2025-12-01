@@ -4,7 +4,7 @@
 ☑ Polish ux and better base prompt context
 ☑ Beeing able to use Claude or Ollama as LLM instead of Openai chatgpt
 ☑ Make the bot i18n the users that speak spanish or french can interacts with it
-☐ Make a complete full readme for documentation for my colleagues or potential users
+☑ Make a complete full readme for documentation for my colleagues or potential users
 ☐ Implement live deployment de be available 24/7
 ☐ Implement CI/CD pipeline 
 

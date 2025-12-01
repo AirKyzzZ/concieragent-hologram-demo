@@ -1,22 +1,29 @@
 <div align="center">
 
-![Concieragent Logo](./logo.png)
+<img src="./logo.png" alt="Concieragent Logo" width="200"/>
 
 # 🌍 Concieragent
 
-**An AI-Powered Travel Planning Assistant for Hologram**
+**Your Multilingual AI Travel Concierge for Hologram**
 
-*Orchestrating complex travel planning through Model Context Protocol (MCP) and OpenAI GPT-4o*
+*Orchestrating complex travel planning through MCP (Model Context Protocol) with multi-LLM support*
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-[![Python](https://img.shields.io/badge/Python-3.8+-3776AB?logo=python)](https://www.python.org/)
-[![MCP](https://img.shields.io/badge/MCP-Compatible-purple.svg)](https://modelcontextprotocol.io/)
-[![Hologram](https://img.shields.io/badge/Hologram-VS%20Agent-teal.svg)](https://hologram.zone/)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991?logo=openai)](https://openai.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![MCP](https://img.shields.io/badge/MCP-Protocol-8B5CF6?style=for-the-badge)](https://modelcontextprotocol.io/)
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [Usage Examples](#-real-world-usage-examples) • [Developer Guide](#-developer-guide)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=flat-square&logo=openai)](https://openai.com/)
+[![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?style=flat-square)](https://anthropic.com/)
+[![Ollama](https://img.shields.io/badge/Ollama-Local-000000?style=flat-square)](https://ollama.ai/)
+[![Hologram](https://img.shields.io/badge/Hologram-VS%20Agent-00D4AA?style=flat-square)](https://hologram.zone/)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+
+---
+
+🇬🇧 English • 🇪🇸 Español • 🇫🇷 Français
+
+[Features](#-features) • [Quick Start](#-quick-start) • [Configuration](#%EF%B8%8F-configuration) • [Architecture](#-architecture) • [API Reference](#-api-reference)
 
 </div>
 
@@ -24,103 +31,92 @@
 
 ## 🎯 What is Concieragent?
 
-**Concieragent** is a sophisticated AI travel planning assistant that runs on the Hologram platform. It combines the power of **OpenAI's GPT-4o** with **six specialized MCP (Model Context Protocol) servers** to provide comprehensive travel planning capabilities. Users can interact with Concieragent through the Hologram mobile app to plan complete vacations with real-time data on flights, hotels, events, weather, and financial information.
+**Concieragent** is a production-ready, multilingual AI travel assistant that runs on the [Hologram](https://hologram.zone) platform. It demonstrates the power of **MCP (Model Context Protocol)** by orchestrating **6 specialized travel planning servers** with your choice of LLM backend.
 
-### Why It's Powerful
+### ✨ Key Highlights
 
-Unlike simple chatbots, Concieragent:
-- **Orchestrates multiple specialized services** simultaneously
-- **Makes intelligent decisions** about which tools to use and when
-- **Synthesizes complex data** from 6 different domains into coherent travel plans
-- **Handles real-time data** including flight prices, weather forecasts, and currency exchange rates
-- **Operates on a decentralized platform** (Hologram) with end-to-end encryption
+| Feature | Description |
+|---------|-------------|
+| 🤖 **Multi-LLM Support** | Switch between OpenAI, Claude, or Ollama |
+| 🌍 **Multilingual** | Automatic detection & responses in EN/ES/FR |
+| 🛠️ **30 MCP Tools** | Real-time flights, hotels, weather, events, finance |
+| 💬 **Context-Aware** | Remembers conversation history & user preferences |
+| ⚡ **Smart Truncation** | Handles large API responses gracefully |
+| 🔒 **Private & Secure** | End-to-end encrypted via Hologram |
 
 ---
 
 ## ✨ Features
 
-### 🛫 Multi-Domain Travel Planning
-- **Flight Search** - Find and compare flights with real-time pricing
-- **Hotel Discovery** - Search accommodations with filters for budget and amenities
-- **Event Discovery** - Find local events, festivals, and activities
-- **Weather Intelligence** - Get forecasts and plan activities around weather
-- **Geocoding Services** - Convert locations, calculate distances, plan routes
-- **Financial Analysis** - Currency conversion, budget tracking, cost analysis
+### 🛫 Comprehensive Travel Planning
 
-### 🤖 AI Orchestration
-- **GPT-4o Powered** - Advanced reasoning and natural language understanding
-- **Tool Selection** - Intelligently chooses which MCP tools to use
-- **Multi-Step Planning** - Handles complex, multi-part travel requests
-- **Context Awareness** - Maintains conversation context across tool calls
-- **Error Recovery** - Gracefully handles API failures and retries
+<table>
+<tr>
+<td width="50%">
 
-### 🔒 Hologram Integration
-- **Verifiable Service** - Runs on Hologram's decentralized platform
-- **End-to-End Encryption** - Secure DIDComm connections
-- **Mobile-First** - Native iOS/Android app experience
-- **Privacy-Focused** - User data stays private
+**✈️ Flights**
+- Real-time flight search via SerpAPI
+- Filter by price, airline, duration
+- Multi-city and round-trip support
 
----
+**🏨 Hotels**
+- Global hotel search with ratings
+- Filter by amenities, price, class
+- Property details and reviews
 
-## 🏗️ Architecture
+**🎭 Events**
+- Local events and activities
+- Filter by date, type, venue
+- Concert, sports, cultural events
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Hologram Mobile App                       │
-│                    (iPhone/Android)                         │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ DIDComm (Encrypted)
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│              VS Agent (Docker Container)                      │
-│         - DIDComm Protocol Handler                           │
-│         - Connection Management                              │
-│         - Webhook Events                                     │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ HTTP Webhooks
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│            Concieragent Bot Server (Node.js)                  │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │         TravelAgent (OpenAI GPT-4o Orchestrator)        │ │
-│  │  - Message Processing                                   │ │
-│  │  - Tool Selection & Execution                           │ │
-│  │  - Response Generation                                  │ │
-│  └──────────────┬─────────────────────────────────────────┘ │
-│                 │ MCP Protocol (Stdio)                       │
-│                 │                                            │
-│  ┌──────────────▼─────────────────────────────────────────┐ │
-│  │              McpClient (MCP SDK)                        │ │
-│  │  - Spawns Python subprocesses                           │ │
-│  │  - Manages MCP connections                             │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-        ┌──────────────┼──────────────┐
-        │              │              │
-┌───────▼──────┐ ┌────▼──────┐ ┌────▼──────┐
-│ Flight MCP   │ │ Hotel MCP │ │ Event MCP │
-│ Server       │ │ Server    │ │ Server    │
-└──────────────┘ └───────────┘ └───────────┘
-        │              │              │
-┌───────▼──────┐ ┌────▼──────┐ ┌────▼──────┐
-│ Geocoder MCP │ │ Weather   │ │ Finance   │
-│ Server       │ │ MCP Server│ │ MCP Server│
-└──────────────┘ └───────────┘ └───────────┘
-```
+</td>
+<td width="50%">
 
-### Technology Stack
+**🌤️ Weather**
+- Current conditions (OpenWeatherMap)
+- 5-day forecasts
+- Works worldwide
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Frontend** | Hologram Mobile App | User interface, encrypted messaging |
-| **Protocol** | DIDComm | Decentralized identity & encrypted communication |
-| **Orchestration** | VS Agent (Docker) | Hologram protocol handler |
-| **Bot Server** | Node.js + TypeScript | Main application logic |
-| **AI Engine** | OpenAI GPT-4o | Natural language understanding & tool orchestration |
-| **MCP Client** | @modelcontextprotocol/sdk | Protocol client for MCP servers |
-| **MCP Servers** | Python 3.8+ (6 servers) | Specialized travel planning tools |
-| **Package Manager** | UV | Fast Python dependency management |
+**📍 Geocoding**
+- Location to coordinates
+- Distance calculations
+- Batch geocoding
+
+**💰 Finance**
+- Real-time currency conversion
+- Stock lookups
+- Market overview
+
+</td>
+</tr>
+</table>
+
+### 🤖 Multi-LLM Support
+
+Choose your preferred AI backend:
+
+| Provider | Model | Best For |
+|----------|-------|----------|
+| **OpenAI** | GPT-4o | Production demos, best tool calling |
+| **Claude** | Claude Sonnet | Alternative cloud option |
+| **Ollama** | Llama 3.1, Mistral | Local/private, no API costs |
+
+### 🌍 Internationalization (i18n)
+
+The bot automatically detects and responds in the user's language:
+
+- 🇬🇧 **English** - Default language
+- 🇪🇸 **Spanish** - "Hola, ¿qué tiempo hace en Barcelona?"
+- 🇫🇷 **French** - "Bonjour, je cherche un hôtel à Paris"
+
+Language detection happens automatically based on the user's message patterns.
+
+### 🧠 Smart Context Management
+
+- **Conversation Memory** - Remembers destinations, dates, preferences
+- **No Repetitive Questions** - Uses context from previous messages
+- **Token Management** - Automatic truncation of large responses
+- **Rate Limit Handling** - Graceful retry with context trimming
 
 ---
 
@@ -128,410 +124,478 @@ Unlike simple chatbots, Concieragent:
 
 ### Prerequisites
 
-- **Docker** - For running VS Agent
-- **Node.js 18+** - For the bot server
-- **Python 3.8+** - For MCP servers
-- **UV** - Python package manager ([Install UV](https://docs.astral.sh/uv/))
-- **ngrok** - For exposing local server ([Get ngrok](https://ngrok.com/))
-- **Hologram App** - Install on your mobile device ([Download](https://hologram.zone))
-- **API Keys**:
-  - OpenAI API Key ([Get here](https://platform.openai.com/api-keys))
-  - SerpAPI Key ([Get here](https://serpapi.com/))
+| Requirement | Purpose | Get It |
+|------------|---------|--------|
+| Docker | VS Agent container | [Install](https://docker.com) |
+| Node.js 18+ | Bot server | [Install](https://nodejs.org) |
+| Python 3.12+ | MCP servers | [Install](https://python.org) |
+| UV | Python packages | [Install](https://docs.astral.sh/uv/) |
+| ngrok | Public URL tunnel | [Get free](https://ngrok.com) |
+| Hologram App | Mobile client | [Download](https://hologram.zone) |
+
+### API Keys Needed
+
+| Service | Purpose | Free Tier |
+|---------|---------|-----------|
+| OpenAI | LLM orchestration | Pay-as-you-go |
+| SerpAPI | Flights, hotels, events | 100 searches/mo |
+| OpenWeatherMap | Weather data | Unlimited |
 
 ### Installation
 
-1. **Clone and Install Dependencies**
-
 ```bash
-# Install Node.js dependencies
+# 1. Clone the repository
+git clone https://github.com/your-org/concieragent.git
+cd concieragent
+
+# 2. Install Node.js dependencies
 npm install
 
-# Install Python dependencies for all MCP servers
-cd mcp_travelassistant/servers/flight_server && uv sync && cd ../..
-cd mcp_travelassistant/servers/hotel_server && uv sync && cd ../..
-cd mcp_travelassistant/servers/event_server && uv sync && cd ../..
-cd mcp_travelassistant/servers/geocoder_server && uv sync && cd ../..
-cd mcp_travelassistant/servers/weather_server && uv sync && cd ../..
-cd mcp_travelassistant/servers/finance_server && uv sync && cd ../..
-```
+# 3. Install Python dependencies for all MCP servers
+for server in flight hotel event geocoder weather finance; do
+  cd mcp_travelassistant/servers/${server}_server && uv sync && cd ../../..
+done
 
-2. **Configure Environment Variables**
-
-```bash
-# Copy the example file
+# 4. Configure environment
 cp .env.example .env
-
-# Edit .env and add your API keys
-# OPENAI_API_KEY=sk-your-actual-key-here
-# SERPAPI_KEY=your-serpapi-key-here
+# Edit .env with your API keys
 ```
 
-3. **Start ngrok** (Terminal 1)
+### Running
+
+You need **3 terminals**:
 
 ```bash
+# Terminal 1: Start ngrok
 ngrok http 3001
-# Copy the URL (e.g., abc123.ngrok-free.app)
-```
+# Note the URL: https://xxxxx.ngrok-free.app
 
-4. **Start Bot Server** (Terminal 2)
-
-```bash
+# Terminal 2: Start bot server
 npm start
-# Wait for "✅ Travel Agent ready!" message
+# Wait for: ✅ Travel Agent ready!
+
+# Terminal 3: Start VS Agent
+./docker-run.sh xxxxx.ngrok-free.app
 ```
 
-5. **Start VS Agent** (Terminal 3)
+### Connect & Test
 
-```bash
-./docker-run.sh <your-ngrok-url>
-# Example: ./docker-run.sh abc123.ngrok-free.app
-```
-
-6. **Connect with Hologram App**
-
-- Open `http://localhost:3001/invitation` in your browser
-- Scan the QR code with the Hologram app
-- Accept the connection invitation
-
-7. **Start Planning!**
-
-Send a message like: *"Plan a weekend trip to Paris for under $2000"*
+1. Open `http://localhost:3001/invitation`
+2. Scan QR code with Hologram app
+3. Send: "What's the weather in Tokyo?" 🎉
 
 ---
 
-## 💬 Real-World Usage Examples
+## ⚙️ Configuration
 
-### Example 1: Complete Vacation Planning
+### Environment Variables
 
-**User:** *"I want to plan a trip to Banff and Jasper in Alberta from Reston, Virginia during June 7-14, 2025. Find flights, hotels, and events. We like hiking, sightseeing, dining, and museums. Budget is $5000 USD."*
+Create a `.env` file in the project root:
 
-**Concieragent's Process:**
-1. 🗺️ **Geocodes** locations (Reston, VA → Banff, AB → Jasper, AB)
-2. ✈️ **Searches flights** from IAD to Calgary for June 7-14
-3. 🏨 **Finds hotels** in Banff and Jasper matching budget and preferences
-4. 🌤️ **Checks weather** forecasts for outdoor activity planning
-5. 🎭 **Discovers events** and activities matching interests
-6. 💰 **Converts costs** from CAD to USD
-7. 📊 **Synthesizes** everything into a day-by-day itinerary
-
-**Response:** A comprehensive plan with flight options, hotel recommendations, weather-appropriate activity scheduling, event suggestions, and complete budget breakdown in USD.
-
-### Example 2: Quick Weekend Getaway
-
-**User:** *"Plan a weekend trip from San Francisco to Portland, Oregon. We want breweries, food trucks, and outdoor markets. Budget $1500 for 2 people."*
-
-**Concieragent:**
-- Finds flights leaving Friday evening, returning Sunday night
-- Searches hotels near Portland's food truck areas
-- Discovers brewery tours and outdoor markets
-- Checks weather for outdoor activities
-- Provides budget breakdown with currency conversion if needed
-
-### Example 3: International Business Travel
-
-**User:** *"I need to travel from New York to Tokyo June 20-25, 2025. Business class flights, luxury hotels near Tokyo Station, check weather, convert costs to USD, find networking events for tech professionals."*
-
-**Concieragent:**
-- Searches business class flights
-- Finds luxury hotels near Tokyo Station
-- Gets weather forecasts for appropriate clothing
-- Converts all costs to USD
-- Discovers tech networking events during the week
-
----
-
-## 🛠️ Developer Guide
-
-### Project Structure
-
-```
-concieragent/
-├── src/
-│   ├── bot.ts                 # Express server, webhook handler
-│   └── agent/
-│       ├── McpClient.ts       # MCP protocol client implementation
-│       └── TravelAgent.ts    # OpenAI orchestration logic
-├── mcp_travelassistant/
-│   └── servers/
-│       ├── flight_server/     # Flight search MCP server
-│       ├── hotel_server/      # Hotel search MCP server
-│       ├── event_server/      # Event discovery MCP server
-│       ├── geocoder_server/   # Geocoding MCP server
-│       ├── weather_server/    # Weather MCP server
-│       └── finance_server/    # Finance/currency MCP server
-├── docker-run.sh             # VS Agent startup script
-├── .env.example              # Environment variables template
-├── package.json              # Node.js dependencies
-└── tsconfig.json             # TypeScript configuration
-```
-
-### How MCP Integration Works
-
-**Model Context Protocol (MCP)** is a protocol for AI assistants to securely access external data sources and tools. Here's how Concieragent uses it:
-
-1. **MCP Client Initialization** (`McpClient.ts`)
-   - Spawns Python subprocesses for each MCP server using `uv run`
-   - Establishes stdio-based communication channels
-   - Manages connection lifecycle
-
-2. **Tool Discovery** (`TravelAgent.ts`)
-   - Each MCP server exposes tools via `listTools()`
-   - Tools are aggregated and formatted for OpenAI's function calling API
-   - Tool-to-server mapping is maintained for routing
-
-3. **Orchestration Flow**
-   ```
-   User Message → GPT-4o → Tool Selection → MCP Client → Python Server → API Call → Result → GPT-4o → Response
-   ```
-
-4. **Multi-Tool Execution**
-   - GPT-4o can call multiple tools in parallel when dependencies allow
-   - Sequential execution when tools depend on previous results
-   - Error handling and retry logic for failed tool calls
-
-### Key Developer Challenges
-
-#### 1. **MCP Protocol Implementation**
-
-**Challenge:** Implementing a robust MCP client that can spawn and manage multiple Python subprocesses.
-
-**Solution:**
-- Used `@modelcontextprotocol/sdk` for protocol handling
-- Implemented `StdioClientTransport` for subprocess communication
-- Added connection pooling and error recovery
-
-**Code Snippet:**
-```typescript
-const transport = new StdioClientTransport({
-  command: "uv",
-  args: ["run", "python", path.basename(serverPath)],
-  env: { ...process.env, ...env },
-  cwd: path.dirname(serverPath)
-});
-```
-
-#### 2. **Tool Orchestration Complexity**
-
-**Challenge:** GPT-4o needs to understand which tools to use, when to use them, and how to combine results.
-
-**Solution:**
-- Comprehensive system prompts explaining tool capabilities
-- Tool descriptions include examples and use cases
-- Multi-turn conversation handling for complex requests
-
-**Example:**
-```typescript
-const systemPrompt = `You are Concieragent, a helpful travel assistant...
-- Use geocoding before weather searches (need coordinates)
-- Search flights before hotels (destination confirmation)
-- Convert currencies for budget analysis
-- Current Date: ${new Date().toISOString().split('T')[0]}`;
-```
-
-#### 3. **Error Handling & Resilience**
-
-**Challenge:** MCP servers can fail, APIs can be rate-limited, or network issues can occur.
-
-**Solution:**
-- Graceful degradation (continue with available tools)
-- Comprehensive error logging
-- User-friendly error messages
-- Retry logic for transient failures
-
-#### 4. **Environment Management**
-
-**Challenge:** Managing API keys and environment variables across Node.js and Python processes.
-
-**Solution:**
-- Centralized `.env` file with `dotenv`
-- Environment variable passthrough to Python subprocesses
-- `.env.example` template for easy setup
-
-#### 5. **Type Safety Across Languages**
-
-**Challenge:** Maintaining type safety between TypeScript and Python MCP servers.
-
-**Solution:**
-- Zod schemas for runtime validation
-- TypeScript interfaces matching MCP tool schemas
-- JSON schema validation for tool parameters
-
-### Extending Concieragent
-
-#### Adding a New MCP Server
-
-1. **Add Server to TravelAgent.ts:**
-```typescript
-const servers = [
-  // ... existing servers
-  { 
-    path: path.join(mcpBasePath, "new_server/new_server.py"), 
-    env: { API_KEY: process.env.NEW_API_KEY } 
-  },
-];
-```
-
-2. **Update Environment Variables:**
 ```bash
-# .env.example
-NEW_API_KEY=your-api-key-here
+# ═══════════════════════════════════════════════════════════════
+# LLM PROVIDER CONFIGURATION
+# ═══════════════════════════════════════════════════════════════
+
+# Choose: 'openai', 'claude', or 'ollama'
+LLM_PROVIDER=openai
+
+# ───────────────────────────────────────────────────────────────
+# OpenAI (default)
+# ───────────────────────────────────────────────────────────────
+OPENAI_API_KEY=sk-your-key-here
+# OPENAI_MODEL=gpt-4o  # Optional, defaults to gpt-4o
+
+# ───────────────────────────────────────────────────────────────
+# Anthropic Claude
+# ───────────────────────────────────────────────────────────────
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+# CLAUDE_MODEL=claude-sonnet-4-20250514  # Optional
+
+# ───────────────────────────────────────────────────────────────
+# Ollama (Local - no API key needed)
+# ───────────────────────────────────────────────────────────────
+# OLLAMA_BASE_URL=http://localhost:11434  # Optional
+# OLLAMA_MODEL=llama3.1  # Optional
+
+# ═══════════════════════════════════════════════════════════════
+# MCP SERVER API KEYS
+# ═══════════════════════════════════════════════════════════════
+
+# SerpAPI - Flights, Hotels, Events, Finance
+SERPAPI_KEY=your-serpapi-key-here
+
+# OpenWeatherMap - Weather data
+OPENWEATHER_API_KEY=your-openweather-key-here
+
+# ═══════════════════════════════════════════════════════════════
+# VS AGENT
+# ═══════════════════════════════════════════════════════════════
+VS_AGENT_URL=http://localhost:3000
 ```
 
-3. **Install Dependencies:**
+### Switching LLM Providers
+
+Simply change `LLM_PROVIDER` in your `.env`:
+
 ```bash
-cd mcp_travelassistant/servers/new_server && uv sync
+# Use Claude instead of OpenAI
+LLM_PROVIDER=claude
+ANTHROPIC_API_KEY=sk-ant-xxxxx
+
+# Use local Ollama (free!)
+LLM_PROVIDER=ollama
+OLLAMA_MODEL=llama3.1
 ```
 
-#### Customizing AI Behavior
+For Ollama, make sure it's running:
 
-Edit the system prompt in `src/agent/TravelAgent.ts`:
-
-```typescript
-content: `You are Concieragent, a helpful travel assistant...
-  // Add your custom instructions here
-`
-```
-
-#### Adding Conversation Memory
-
-Currently, each message is processed independently. To add memory:
-
-```typescript
-// In TravelAgent.ts
-private conversationHistory: Map<string, ChatCompletionMessageParam[]> = new Map();
-
-async processMessage(userMessage: string, connectionId: string): Promise<string> {
-  const history = this.conversationHistory.get(connectionId) || [];
-  // Use history in messages array
-  // Update history after processing
-}
+```bash
+# Install from https://ollama.ai
+ollama pull llama3.1
+ollama serve
 ```
 
 ---
 
-## 🔍 Troubleshooting
+## 🏗️ Architecture
 
-### Bot Not Responding
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    📱 Hologram Mobile App                        │
+│                    (iPhone / Android)                            │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ 🔐 DIDComm (E2E Encrypted)
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  🐳 VS Agent (Docker)                            │
+│            Protocol Handler • Connection Manager                 │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │ HTTP Webhooks
+                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              🤖 Concieragent Bot Server (Node.js)               │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                    TravelAgent                             │  │
+│  │  • Multi-LLM Provider (OpenAI/Claude/Ollama)              │  │
+│  │  • Context Management & Memory                             │  │
+│  │  • i18n Language Detection                                 │  │
+│  │  • Token Management & Truncation                           │  │
+│  └─────────────────────────┬─────────────────────────────────┘  │
+│                            │ MCP Protocol                        │
+│  ┌─────────────────────────▼─────────────────────────────────┐  │
+│  │                    McpClient                               │  │
+│  │           Spawns & manages Python MCP servers              │  │
+│  └─────────────────────────┬─────────────────────────────────┘  │
+└────────────────────────────┼────────────────────────────────────┘
+                             │
+       ┌─────────────────────┼─────────────────────┐
+       │                     │                     │
+┌──────▼──────┐  ┌──────────▼──────────┐  ┌──────▼──────┐
+│ ✈️ Flights   │  │ 🏨 Hotels           │  │ 🎭 Events   │
+│ (SerpAPI)   │  │ (SerpAPI)           │  │ (SerpAPI)   │
+└─────────────┘  └────────────────────┘  └─────────────┘
+       │                     │                     │
+┌──────▼──────┐  ┌──────────▼──────────┐  ┌──────▼──────┐
+│ 📍 Geocoder  │  │ 🌤️ Weather          │  │ 💰 Finance  │
+│ (Nominatim) │  │ (OpenWeatherMap)    │  │ (SerpAPI)   │
+└─────────────┘  └────────────────────┘  └─────────────┘
+```
 
-1. **Check Bot Server Logs**
-   ```bash
-   # Look for MCP connection errors
-   npm start
-   ```
+### Technology Stack
 
-2. **Verify MCP Servers**
-   ```bash
-   # Test a server directly
-   cd mcp_travelassistant/servers/flight_server
-   uv run python flight_server.py
-   ```
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| Frontend | Hologram App | Encrypted mobile messaging |
+| Protocol | DIDComm | Decentralized identity & encryption |
+| Gateway | VS Agent | Protocol handler (Docker) |
+| Server | Node.js + TypeScript | Application logic |
+| AI | OpenAI / Claude / Ollama | LLM orchestration |
+| Tools | MCP Protocol | External service integration |
+| Servers | Python 3.12 + FastMCP | 6 specialized MCP servers |
 
-3. **Check API Keys**
-   ```bash
-   # Verify .env file exists and has valid keys
-   cat .env
-   ```
+---
 
-### MCP Connection Failures
+## 📡 API Reference
 
-**Error:** `⚠️ Failed to connect to MCP server`
+### Endpoints
 
-**Solutions:**
-- Verify Python dependencies: `cd mcp_travelassistant/servers/<server> && uv sync`
-- Check file paths in `TravelAgent.ts`
-- Verify environment variables are passed correctly
-- Check Python version: `python3 --version` (needs 3.8+)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/message-received` | Webhook for incoming messages |
+| `POST` | `/connection-established` | Handle new connections with welcome |
+| `GET` | `/welcome?lang=es` | Get localized welcome message |
+| `GET` | `/health` | Health check |
+| `GET` | `/invitation` | QR code for Hologram connection |
+| `GET` | `/logo.png` | Bot logo |
 
-### VS Agent Issues
+### MCP Tools Available (30 total)
 
-**Error:** `Failed to start VS Agent`
+<details>
+<summary><b>✈️ Flight Tools (4)</b></summary>
 
-**Solutions:**
+| Tool | Description |
+|------|-------------|
+| `search_flights` | Search flights by origin, destination, dates |
+| `get_flight_details` | Get detailed info for a specific flight |
+| `filter_flights_by_price` | Filter results by max price |
+| `filter_flights_by_airline` | Filter results by airline |
+
+</details>
+
+<details>
+<summary><b>🏨 Hotel Tools (7)</b></summary>
+
+| Tool | Description |
+|------|-------------|
+| `search_hotels` | Search hotels by location, dates |
+| `get_hotel_details` | Get detailed hotel info |
+| `get_property_details` | Extended property information |
+| `filter_hotels_by_price` | Filter by price range |
+| `filter_hotels_by_rating` | Filter by star rating |
+| `filter_hotels_by_amenities` | Filter by amenities |
+| `filter_hotels_by_class` | Filter by hotel class |
+
+</details>
+
+<details>
+<summary><b>🎭 Event Tools (5)</b></summary>
+
+| Tool | Description |
+|------|-------------|
+| `search_events` | Search local events |
+| `get_event_details` | Get event details |
+| `filter_events_by_date` | Filter by date range |
+| `filter_events_by_type` | Filter by event type |
+| `filter_events_by_venue` | Filter by venue |
+
+</details>
+
+<details>
+<summary><b>🌤️ Weather Tools (3)</b></summary>
+
+| Tool | Description |
+|------|-------------|
+| `get_current_conditions` | Current weather for location |
+| `get_weather_forecast` | 5-day weather forecast |
+| `get_weather_data_details` | Extended weather data |
+
+</details>
+
+<details>
+<summary><b>📍 Geocoder Tools (5)</b></summary>
+
+| Tool | Description |
+|------|-------------|
+| `geocode_location` | Address to coordinates |
+| `reverse_geocode` | Coordinates to address |
+| `batch_geocode` | Multiple locations at once |
+| `calculate_distance` | Distance between points |
+| `search_locations` | Search for places |
+
+</details>
+
+<details>
+<summary><b>💰 Finance Tools (6)</b></summary>
+
+| Tool | Description |
+|------|-------------|
+| `convert_currency` | Real-time currency conversion |
+| `lookup_stock` | Stock price lookup |
+| `get_market_overview` | Market summary |
+| `get_finance_details` | Extended finance data |
+| `filter_stocks_by_price_movement` | Filter stocks |
+| `get_historical_data` | Historical prices |
+
+</details>
+
+---
+
+## 💬 Usage Examples
+
+### English
+
+```
+User: "What's the weather like in Paris this week?"
+Bot: 🌤️ Using OpenWeatherMap MCP tool...
+
+     Current weather in Paris, France:
+     Temperature: 18°C (feels like 17°C)
+     Conditions: Partly cloudy
+     Humidity: 65%
+     Wind: 12 km/h
+
+     5-Day Forecast:
+     - Monday: 19°C, Sunny
+     - Tuesday: 17°C, Light rain
+     ...
+```
+
+### Spanish 🇪🇸
+
+```
+User: "Hola, busco vuelos de Madrid a Tokyo para la próxima semana"
+Bot: ¡Hola! Voy a buscar vuelos de Madrid a Tokyo...
+
+     ✈️ He encontrado 5 opciones de vuelos:
+     
+     1. Iberia - $892 USD
+        Duración: 14h 30m (1 escala)
+        Salida: 10:30 → Llegada: 07:00+1
+     ...
+```
+
+### French 🇫🇷
+
+```
+User: "Bonjour, je cherche un hôtel à Nice pour le week-end prochain"
+Bot: Bonjour ! Je recherche des hôtels à Nice...
+
+     🏨 J'ai trouvé 8 hôtels correspondant à vos critères:
+     
+     1. Hôtel Negresco ⭐⭐⭐⭐⭐
+        Prix: 320€/nuit
+        Note: 4.8/5 (1,234 avis)
+     ...
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+<details>
+<summary><b>❌ "No MCP tools available"</b></summary>
+
+**Cause:** Python MCP servers failed to start
+
+**Fix:**
+```bash
+# Check each server can start
+cd mcp_travelassistant/servers/flight_server
+uv sync
+uv run python flight_server.py
+# Should show "Processing request..." when working
+```
+</details>
+
+<details>
+<summary><b>❌ Rate limit exceeded (429)</b></summary>
+
+**Cause:** Too many tokens or requests to OpenAI
+
+**Fix:**
+- The bot automatically retries with trimmed context
+- Wait a few seconds between requests
+- Consider using Ollama for unlimited local usage
+</details>
+
+<details>
+<summary><b>❌ VS Agent won't start</b></summary>
+
+**Fix:**
 ```bash
 # Check Docker is running
 docker ps
 
-# Check ports aren't in use
-lsof -i :3000
-lsof -i :3001
-
-# Restart VS Agent
+# Remove old container and restart
 docker stop vs-agent && docker rm vs-agent
-./docker-run.sh <your-ngrok-url>
+./docker-run.sh your-ngrok-url
 ```
+</details>
 
-### OpenAI API Errors
+<details>
+<summary><b>❌ Weather/flights returning errors</b></summary>
 
-**Error:** `Error in TravelAgent processMessage`
+**Cause:** Missing or invalid API keys
 
-**Solutions:**
-- Verify `OPENAI_API_KEY` in `.env`
-- Check API quota/billing
-- Review rate limits
-- Check network connectivity
+**Fix:** Check your `.env` file has valid keys:
+```bash
+OPENWEATHER_API_KEY=your-key  # Get from openweathermap.org
+SERPAPI_KEY=your-key          # Get from serpapi.com
+```
+</details>
 
 ---
 
-## 📊 Performance Considerations
+## 📁 Project Structure
 
-### API Rate Limits
+```
+concieragent/
+├── 📄 src/
+│   ├── bot.ts                    # Express server, webhooks, endpoints
+│   ├── agent/
+│   │   ├── TravelAgent.ts        # Main orchestration logic
+│   │   └── McpClient.ts          # MCP protocol client
+│   └── providers/
+│       ├── types.ts              # Provider interfaces
+│       ├── openai-provider.ts    # OpenAI adapter
+│       ├── claude-provider.ts    # Claude adapter
+│       ├── ollama-provider.ts    # Ollama adapter
+│       └── index.ts              # Provider factory
+├── 🐍 mcp_travelassistant/
+│   └── servers/
+│       ├── flight_server/        # ✈️ Flight search
+│       ├── hotel_server/         # 🏨 Hotel search
+│       ├── event_server/         # 🎭 Event discovery
+│       ├── geocoder_server/      # 📍 Geocoding
+│       ├── weather_server/       # 🌤️ Weather
+│       └── finance_server/       # 💰 Finance
+├── 📜 docker-run.sh              # VS Agent startup
+├── 📋 package.json               # Dependencies
+├── ⚙️ tsconfig.json              # TypeScript config
+└── 📖 README.md                  # You are here!
+```
 
-- **SerpAPI**: 250 searches/month (free tier)
-- **OpenAI**: Varies by tier / model and credits (check your plan)
-- **Weather APIs**: Free
+---
 
-### Optimization Tips
+## 🛣️ Roadmap
 
-1. **Cache Results**: Implement caching for frequently requested data
-2. **Parallel Tool Calls**: GPT-4o can call multiple tools simultaneously
-3. **Smart Tool Selection**: System prompt guides GPT-4o to use tools efficiently
-4. **Connection Pooling**: MCP clients are reused across requests
+- [x] Multi-LLM support (OpenAI, Claude, Ollama)
+- [x] Internationalization (EN, ES, FR)
+- [x] Conversation context memory
+- [x] Smart token management
+- [ ] Live deployment (24/7 availability)
+- [ ] CI/CD pipeline
+- [ ] Credential/passport verification
+- [ ] More languages (DE, IT, PT, JA, ZH)
+- [ ] Car rental MCP server
+- [ ] Restaurant reservations
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Areas for improvement:
+Contributions welcome! Please:
 
-- [ ] Add conversation memory/history
-- [ ] Implement result caching
-- [ ] Add more MCP servers (car rentals, restaurant reservations)
-- [ ] Improve error messages
-- [ ] Add unit tests
-- [ ] Performance optimizations
-- [ ] Multi-language support
-
----
-
-## 📚 Resources
-
-- [Hologram Documentation](https://hologram.zone)
-- [VS Agent GitHub](https://github.com/2060-io/vs-agent)
-- [Model Context Protocol](https://modelcontextprotocol.io)
-- [OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ---
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
 ## 🙏 Acknowledgments
 
-- **Hologram** - For the amazing decentralized messaging platform
-- **2060 OÜ** - For VS Agent and Hologram infrastructure
-- **Anthropic** - For MCP protocol specification
-- **OpenAI** - For GPT-4o and function calling capabilities
-- **MCP Travel Assistant** - For the comprehensive MCP server ecosystem
+- **[Hologram](https://hologram.zone)** - Decentralized messaging platform
+- **[Anthropic](https://anthropic.com)** - MCP protocol specification
+- **[OpenAI](https://openai.com)** - GPT-4o and function calling
+- **[Ollama](https://ollama.ai)** - Local LLM runtime
+- **[2060 OÜ](https://2060.io)** - VS Agent infrastructure
 
 ---
 
 <div align="center">
 
-**Built with ❤️ for the Hologram ecosystem**
+**Built with ❤️ for the Hologram ecosystem by Maxime Mansiet**
 
-[Report Bug](https://github.com/airkyzzz/concieragent-hologram-demo/issues) • [Request Feature](https://github.com/airkyzzz/concieragent-hologram-demo/issues) • [Documentation](./docs)
+[⬆️ Back to Top](#-concieragent)
 
 </div>
