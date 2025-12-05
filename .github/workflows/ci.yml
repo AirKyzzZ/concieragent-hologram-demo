@@ -64,14 +64,20 @@ jobs:
           version: 'latest'
 
       - name: Login to Docker Hub OCI Registry
-        if: ${{ secrets.DOCKER_HUB_LOGIN != '' }}
+        continue-on-error: true
         run: |
-          echo "${{ secrets.DOCKER_HUB_PWD }}" | helm registry login -u "${{ secrets.DOCKER_HUB_LOGIN }}" --password-stdin docker.io
+          if [ -n "$DOCKER_HUB_LOGIN" ] && [ -n "$DOCKER_HUB_PWD" ]; then
+            echo "$DOCKER_HUB_PWD" | helm registry login -u "$DOCKER_HUB_LOGIN" --password-stdin docker.io
+            echo "✅ Logged in to Docker Hub OCI registry"
+          else
+            echo "⚠️ Docker Hub credentials not available, skipping OCI login"
+          fi
         env:
           DOCKER_HUB_LOGIN: ${{ secrets.DOCKER_HUB_LOGIN }}
           DOCKER_HUB_PWD: ${{ secrets.DOCKER_HUB_PWD }}
 
       - name: Update Helm Dependencies
+        continue-on-error: true
         run: |
           helm dependency update ./charts || echo "⚠️ Could not fetch all dependencies (OCI registry login may be required)"
 
