@@ -57,6 +57,7 @@ spec:
     - host: {{ tpl .Values.ingress.host . }}
       http:
         paths:
+          {{- if index .Values "vs-agent-chart" "enabled" }}
           # Route /invitation to VS Agent (public port 3001)
           - path: /invitation
             pathType: Prefix
@@ -65,6 +66,7 @@ spec:
                 name: {{ index .Values "vs-agent-chart" "name" }}-public
                 port:
                   number: 3001
+          {{- end }}
           # Route everything else to Concieragent bot
           - path: /
             pathType: Prefix
