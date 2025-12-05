@@ -86,17 +86,31 @@ jobs:
 
       - name: Template Helm Chart (dry-run)
         run: |
-          # Skip dependency check if dependencies couldn't be fetched
-          helm template concieragent ./charts \
-            --namespace demos \
-            --set global.domain=test.example.com \
-            --set secrets.openaiApiKey=test-key \
-            --set secrets.serpapiKey=test-key \
-            --set secrets.openweatherApiKey=test-key \
-            --set vs-agent-chart.enabled=false \
-            --skip-tests \
-            --debug > /dev/null
-          echo "✅ Helm template generation successful"
+          # Check if dependencies were fetched successfully
+          if [ -d "./charts/charts" ] && [ "$(ls -A ./charts/charts 2>/dev/null)" ]; then
+            echo "📦 Dependencies available, running full template test"
+            helm template concieragent ./charts \
+              --namespace demos \
+              --set global.domain=test.example.com \
+              --set secrets.openaiApiKey=test-key \
+              --set secrets.serpapiKey=test-key \
+              --set secrets.openweatherApiKey=test-key \
+              --debug > /dev/null
+            echo "✅ Helm template generation successful"
+          else
+            echo "⚠️ Dependencies not available, running template without subchart"
+            # Remove dependency requirement temporarily for CI
+            sed -i '/^dependencies:/,/condition:/d' ./charts/Chart.yaml
+            helm template concieragent ./charts \
+              --namespace demos \
+              --set global.domain=test.example.com \
+              --set secrets.openaiApiKey=test-key \
+              --set secrets.serpapiKey=test-key \
+              --set secrets.openweatherApiKey=test-key \
+              --set vs-agent-chart.enabled=false \
+              --debug > /dev/null
+            echo "✅ Helm template generation successful (without vs-agent-chart dependency)"
+          fi
 
   # ─────────────────────────────────────────────────────────────────────────
   # Docker Build Test (no push)
