@@ -1,12 +1,19 @@
 {
-  "name": "hologram-chatbot",
+  "name": "concieragent",
   "version": "1.0.0",
-  "description": "A simple Hologram chatbot that responds with test messages",
+  "description": "Multilingual AI Travel Concierge for Hologram - powered by MCP",
   "main": "dist/bot.js",
   "scripts": {
-    "start": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/bot.ts",
+    "start": "node dist/bot.js",
+    "start:dev": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/bot.ts",
     "build": "tsc",
-    "dev": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/bot.ts"
+    "dev": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' src/bot.ts",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "docker:build": "docker build -t concieragent:local .",
+    "docker:run": "docker run -p 4001:4001 --env-file .env concieragent:local",
+    "helm:lint": "helm lint ./charts",
+    "helm:template": "helm template concieragent ./charts --debug"
   },
   "keywords": [
     "hologram",
@@ -25,7 +32,7 @@
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
-    "@types/node": "^20.10.0",
+    "@types/node": "^24.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
