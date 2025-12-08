@@ -6,7 +6,7 @@
 # ───────────────────────────────────────────────────────────────────────────
 # Stage 1: Node.js Dependencies
 # ───────────────────────────────────────────────────────────────────────────
-FROM node:20-slim AS node-deps
+FROM node:24-slim AS node-deps
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN npm ci --only=production && \
 # ───────────────────────────────────────────────────────────────────────────
 # Stage 2: TypeScript Build
 # ───────────────────────────────────────────────────────────────────────────
-FROM node:20-slim AS node-builder
+FROM node:24-slim AS node-builder
 
 WORKDIR /app
 
@@ -40,11 +40,11 @@ RUN npm run build
 # ───────────────────────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
 
-# Install Node.js 20.x
+# Install Node.js 24.x
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
