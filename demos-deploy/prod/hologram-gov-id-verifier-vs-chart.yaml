@@ -1,9 +1,0 @@
-# === Global chart version ===
-# This version is used to deploy the chart and should be updated when the chart is updated.
-# It is not used to deploy the application, but to deploy the chart itself.
-chartSource: oci://registry-1.docker.io/io2060/hologram-generic-verifier-chart
-chartVersion: v1.2.2
-
-# === Chart's setup verifier ===
-service:
-  issuerDid: did:webvh:Qmb9hQmWuJ3FSRssNVaGseurmmMfmHa6TGXBFMXSuJuaQa:dm.gov-id-issuer.{{ .Values.global.domain }}
