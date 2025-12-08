@@ -1,0 +1,20 @@
+# === Global chart version ===
+# This version is used to deploy the chart and should be updated when the chart is updated.
+# It is not used to deploy the application, but to deploy the chart itself.
+chartSource: oci://registry-1.docker.io/io2060/pymediasoup-client-chart
+chartVersion: v1.1.0
+
+# === Chart's setup issuer ===
+global:
+  domain: example.io
+
+name: webrtc-pymediasoup-client
+replicas: 1
+backend:
+  env:
+    flask_app: app.py
+    flask_env: test
+    debug: 1
+    pythonunbuffered: 1
+    video_url: https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_2mb.mp4
+

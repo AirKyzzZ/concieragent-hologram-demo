@@ -1,0 +1,42 @@
+# === Global chart version ===
+# This version is used to deploy the chart and should be updated when the chart is updated.
+# It is not used to deploy the application, but to deploy the chart itself.
+chartSource: oci://registry-1.docker.io/io2060/webrtc-client-chart
+chartVersion: v1.1.0
+
+# === Chart's setup webrtc client ===
+configMap:
+  name: webrtc-client-demos-config
+  serverName: webrtc.{{ .Values.global.domain }}
+  protooPort: 443
+
+secret:
+  name: webrtc-webclient.{{ .Values.global.domain }}-cert
+
+deployment:
+  name: webrtc-webclient
+  labels:
+    app: webrtc-webclient
+  pullPolicy: Always
+  replicas: 1
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "1"
+    requests:
+      memory: "256Mi"
+      cpu: "0.5"
+
+service:
+  name: webrtc-client-demos-service
+  ports:
+    https: 443
+
+ingress:
+  name: webrtc-client-demos-ingress
+  enabled: true
+  host: webrtc-webclient.{{ .Values.global.domain }}
+  tlsSecret: webrtc-webclient.{{ .Values.global.domain }}-cert
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS  

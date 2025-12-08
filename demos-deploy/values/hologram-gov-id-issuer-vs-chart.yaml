@@ -1,0 +1,65 @@
+# === Global chart version ===
+# This version is used to deploy the chart and should be updated when the chart is updated.
+# It is not used to deploy the application, but to deploy the chart itself.
+chartSource: oci://registry-1.docker.io/io2060/hologram-gov-id-issuer-vs-chart
+chartVersion: v1.3.0
+
+# === Chart's setup issuer ===
+name: gov-id-issuer-app
+
+database:
+  host: gov-id-issuer-vsa
+  user: govidissuer
+  pwd: MjA2MGRlbW8=
+
+ingress:
+  host: "gov-id-issuer.{{ .Values.global.domain }}"
+  tlsSecret: public.{{ .Values.name }}.{{ .Values.global.domain }}-cert
+
+backend:
+  webrtc: https://webrtc.{{ .Values.global.domain }}
+  vision: https://vision.{{ .Values.global.domain }}
+  vsAgentAdminUrl: http://gov-id-issuer-vsa:3000
+  port: 2903
+  timeout: 900
+
+vs-agent-chart:
+  enabled: true
+  name: gov-id-issuer-vsa
+  didcommLabel: Gov ID Issuer
+  eventsBaseUrl: http://gov-id-issuer-app:2903
+  didcommInvitationImageUrl: https://s3.minio.{{ .Values.global.domain | trimPrefix "demos." }}/public/gov-id-issuer.png
+  ingress:
+    host: "dm.gov-id-issuer.{{ .Values.global.domain }}" # Host for the vs agent service
+    tlsSecret: public.{{ .Values.name }}.{{ .Values.global.domain }}-cert # TLS secret for the vs agent service
+  database:
+    enabled: true
+    host: localhost
+    user: govidissuer
+    pwd: MjA2MGRlbW8=
+  redis: 
+    enabled: true
+
+  extraEnv: 
+    - name: POSTGRES_HOST
+      value: "localhost"
+    - name: POSTGRES_USER
+      value: "govidissuer"
+    - name: POSTGRES_PASSWORD
+      value: "MjA2MGRlbW8="
+    - name: REDIS_HOST
+      value: "localhost"
+    - name: SELF_ISSUED_VTC_ORG_TYPE
+      value: "PRIVATE"
+    - name: SELF_ISSUED_VTC_ORG_COUNTRYCODE
+      value: "EE"
+    - name: SELF_ISSUED_VTC_ORG_ADDRESS
+      value: "Ahtri tn 13 10152 Tallinn"
+    - name: SELF_ISSUED_VTC_SERVICE_TYPE
+      value: "Demo Gov ID issuer"
+    - name: SELF_ISSUED_VTC_SERVICE_DESCRIPTION
+      value: "A demo service to issue Gov ID credentials"
+    - name: SELF_ISSUED_VTC_SERVICE_MINIMUMAGEREQUIRED
+      value: "18"
+    - name: MASTER_LIST_CSCA_LOCATION
+      value: "http://minio-service.devops-tools.svc.cluster.local:9000/secrets/icaopkd-002-complete-000323.ldif"

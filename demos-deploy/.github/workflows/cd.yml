@@ -1,0 +1,33 @@
+name: Deploy to Kubernetes
+
+on:
+  push:
+    branches: [ main, dev ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Common Kube Setup
+        uses: 2060-io/devops/actions/setup-kube@main
+        with:
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Run kubectl command
+        run: |
+          echo "Kubeconfig path is automatically set to: $KUBECONFIG"
+          kubectl version
+          kubectl get pods
+
+      - name: Helm Deploy Dev
+        uses: 2060-io/devops/actions/helm-deploy@main
+        with:
+          environment: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+          namespace: demos # Kubernetes namespace
+          valuesDir: values
+          overridesDir: prod
+          domain: ${{ vars.DOMAIN }}

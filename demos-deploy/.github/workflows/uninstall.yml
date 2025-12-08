@@ -1,0 +1,43 @@
+name: Manual Helm Uninstall
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Select a values file"
+        required: true
+        type: choice
+        options:
+          - concieragent-vs-chart
+          - demo-chatbot-vs-chart
+          - hologram-gov-id-verifier-vs-chart
+          - pymediasoup-client-chart
+          - hologram-gov-id-issuer-vs-chart
+          - vision-service-chart
+          - webrtc-server-chart
+      namespace:
+        description: "Kubernetes namespace of the release"
+        required: true
+        type: choice
+        options:
+          - demos
+
+jobs:
+  uninstall:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'development' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Common Kube Setup
+        uses: 2060-io/devops/actions/setup-kube@main
+        with:
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Uninstall Helm release
+        run: |
+          echo "Uninstalling Helm release '${{ inputs.release }}' from namespace '${{ inputs.namespace }}'..."
+          helm uninstall "${{ inputs.release }}" \
+            --namespace "${{ inputs.namespace }}" || echo "Release not found or already deleted"
