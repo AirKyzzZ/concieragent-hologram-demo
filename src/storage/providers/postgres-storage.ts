@@ -21,7 +21,6 @@ export class PostgresStorageProvider implements StorageProvider {
   private sessionRepository: Repository<SessionEntity> | null = null;
   private messageRepository: Repository<MessageEntity> | null = null;
   private redis: RedisClientType | null = null;
-  private redisDisabled = false; // Track if Redis was disabled due to errors
 
   private readonly config: Required<
     Pick<
@@ -122,7 +121,6 @@ export class PostgresStorageProvider implements StorageProvider {
       this.redis.on('error', (err) => {
         console.error('❌ Redis error, disabling cache:', err);
         this.redis = null;
-        this.redisDisabled = true;
       });
 
       await this.redis.connect();
