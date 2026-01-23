@@ -1,26 +1,22 @@
 import { McpClient } from "./McpClient";
 import path from "path";
 import dotenv from "dotenv";
-import { 
-  createProvider, 
+import {
+  createProvider,
   getAvailableProviders,
-  type LLMProvider, 
-  type LLMMessage, 
+  type LLMProvider,
+  type LLMMessage,
   type LLMTool,
   type LLMProviderType
 } from "../providers";
+import type {
+  StorageProvider,
+  ConversationContext,
+  SupportedLanguage,
+  ExtractedUserInfo
+} from "../storage";
 
 dotenv.config();
-
-// Conversation context storage per connection
-interface ConversationContext {
-  messages: LLMMessage[];
-  extractedInfo: ExtractedUserInfo;
-  lastUpdated: number;
-}
-
-// Supported languages
-type SupportedLanguage = 'en' | 'es' | 'fr';
 
 // Language detection patterns
 const LANGUAGE_PATTERNS: { lang: SupportedLanguage; patterns: RegExp[] }[] = [
@@ -42,44 +38,31 @@ const LANGUAGE_PATTERNS: { lang: SupportedLanguage; patterns: RegExp[] }[] = [
   }
 ];
 
-// Information extracted from the conversation
-interface ExtractedUserInfo {
-  name?: string;
-  currentLocation?: string;
-  destinations?: string[];
-  travelDates?: { start?: string; end?: string };
-  budget?: { amount?: number; currency?: string };
-  preferences?: string[];
-  partySize?: number;
-  interests?: string[];
-  recentSearches?: string[];
-  language?: SupportedLanguage;  // Detected language
-}
-
 export class TravelAgent {
   private provider: LLMProvider;
+  private storage: StorageProvider;
   private mcpClients: McpClient[] = [];
   private tools: LLMTool[] = [];
   private toolMap: Map<string, McpClient> = new Map();
-  // Store conversation history per connection
-  private conversationContexts: Map<string, ConversationContext> = new Map();
   // Maximum messages to keep in history
   private readonly MAX_HISTORY_MESSAGES = 20;
-  // Context expiration time (1 hour)
-  private readonly CONTEXT_EXPIRATION_MS = 60 * 60 * 1000;
   // Token limits for context management
   private readonly MAX_TOOL_RESULT_CHARS = 6000;  // ~1500 tokens per tool result
   private readonly MAX_TOTAL_CONTEXT_CHARS = 24000;  // ~6000 tokens total context
   private readonly MAX_HISTORY_CHARS = 8000;  // ~2000 tokens for history
 
-  constructor(providerType?: LLMProviderType) {
+  constructor(storageProvider: StorageProvider, providerType?: LLMProviderType) {
+    // Set storage provider
+    this.storage = storageProvider;
+    console.log(`💾 Using storage: ${this.storage.name}`);
+
     // Log available providers
     const available = getAvailableProviders();
     console.log('📋 Available LLM providers:');
     for (const p of available) {
       console.log(`   ${p.configured ? '✅' : '⚪'} ${p.type}${p.configured ? '' : ' (not configured)'}`);
     }
-    
+
     // Create the provider
     this.provider = createProvider(providerType);
     console.log(`🤖 Using LLM: ${this.provider.name} (${this.provider.model})`);
@@ -271,51 +254,51 @@ export class TravelAgent {
   /**
    * Sanitize and fix MCP tool schemas to be compatible with OpenAI's function calling API
    */
-  private sanitizeToolSchema(schema: any): any {
+  private sanitizeToolSchema(schema: any, toolName?: string): any {
     if (!schema || typeof schema !== 'object') {
       return schema;
     }
 
-    // Create a deep copy to avoid mutating the original
-    const sanitized = JSON.parse(JSON.stringify(schema));
+    // Create a deep copy to avoid mutating the original (Node 17+)
+    const sanitized = structuredClone(schema);
 
     // Recursively fix array schemas missing 'items'
-    const fixSchema = (obj: any): any => {
+    const fixSchema = (obj: any, path = 'root'): any => {
       if (Array.isArray(obj)) {
-        return obj.map(fixSchema);
+        return obj.map((item: any, i: number) => fixSchema(item, `${path}[${i}]`));
       }
-      
+
       if (obj && typeof obj === 'object') {
         // Fix arrays without items
         if (obj.type === 'array' && !obj.items) {
-          console.warn(`⚠️ Fixing array schema missing items, defaulting to string array`);
+          console.warn(`⚠️ Fixing array schema at ${path} for tool '${toolName ?? 'unknown'}', defaulting to string array`);
           obj.items = { type: 'string' };
         }
         
         // Fix anyOf/oneOf/allOf arrays
         if (obj.anyOf && Array.isArray(obj.anyOf)) {
-          obj.anyOf = obj.anyOf.map(fixSchema);
+          obj.anyOf = obj.anyOf.map((item: any, i: number) => fixSchema(item, `${path}.anyOf[${i}]`));
         }
         if (obj.oneOf && Array.isArray(obj.oneOf)) {
-          obj.oneOf = obj.oneOf.map(fixSchema);
+          obj.oneOf = obj.oneOf.map((item: any, i: number) => fixSchema(item, `${path}.oneOf[${i}]`));
         }
         if (obj.allOf && Array.isArray(obj.allOf)) {
-          obj.allOf = obj.allOf.map(fixSchema);
+          obj.allOf = obj.allOf.map((item: any, i: number) => fixSchema(item, `${path}.allOf[${i}]`));
         }
-        
+
         // Recursively fix properties
         if (obj.properties && typeof obj.properties === 'object') {
           for (const key in obj.properties) {
-            obj.properties[key] = fixSchema(obj.properties[key]);
+            obj.properties[key] = fixSchema(obj.properties[key], `${path}.${key}`);
           }
         }
-        
+
         // Fix items in arrays
         if (obj.items) {
-          obj.items = fixSchema(obj.items);
+          obj.items = fixSchema(obj.items, `${path}.items`);
         }
       }
-      
+
       return obj;
     };
 
@@ -356,7 +339,7 @@ export class TravelAgent {
         for (const tool of toolsResult.tools) {
           try {
             // Sanitize the schema to fix any invalid structures
-            const sanitizedSchema = this.sanitizeToolSchema(tool.inputSchema);
+            const sanitizedSchema = this.sanitizeToolSchema(tool.inputSchema, tool.name);
             
             // Use provider-agnostic LLMTool format
             this.tools.push({
@@ -382,27 +365,6 @@ export class TravelAgent {
     console.log(`📋 Available tools: ${Array.from(this.toolMap.keys()).join(', ')}`);
   }
 
-  /**
-   * Get or create conversation context for a connection
-   */
-  private getOrCreateContext(connectionId: string): ConversationContext {
-    const existing = this.conversationContexts.get(connectionId);
-    const now = Date.now();
-    
-    // Return existing context if valid
-    if (existing && (now - existing.lastUpdated) < this.CONTEXT_EXPIRATION_MS) {
-      return existing;
-    }
-    
-    // Create new context
-    const newContext: ConversationContext = {
-      messages: [],
-      extractedInfo: {},
-      lastUpdated: now
-    };
-    this.conversationContexts.set(connectionId, newContext);
-    return newContext;
-  }
 
   /**
    * Update extracted info from conversation
@@ -654,9 +616,9 @@ Remember: You exist to demonstrate MCP tools. ALWAYS use them for data! Respond 
   }
 
   async processMessage(userMessage: string, connectionId: string): Promise<string> {
-    // Get or create conversation context
-    const context = this.getOrCreateContext(connectionId);
-    
+    // Get or create conversation context (async from storage)
+    const context = await this.storage.getOrCreateContext(connectionId);
+
     // Update extracted info from the new message
     this.updateExtractedInfo(context, userMessage);
     
@@ -865,17 +827,45 @@ Remember: You exist to demonstrate MCP tools. ALWAYS use them for data! Respond 
       // Store assistant response in conversation history
       context.messages.push({ role: "assistant", content: cleanedResponse });
       context.lastUpdated = Date.now();
-      
-      // Prune old messages if needed
-      if (context.messages.length > this.MAX_HISTORY_MESSAGES * 2) {
-        context.messages = context.messages.slice(-this.MAX_HISTORY_MESSAGES);
-      }
+
+      // Save context to storage (handles pruning internally)
+      await this.storage.saveContext(connectionId, context);
 
       console.log(`💬 Response generated for connection ${connectionId} (${cleanedResponse.length} chars)`);
       return cleanedResponse;
 
-    } catch (error) {
-      console.error("Error in TravelAgent processMessage:", error);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error("Error in TravelAgent processMessage:", err.message, err.stack);
+
+      // Classify the error for appropriate user response
+      const errorMessage = err.message.toLowerCase();
+
+      if (errorMessage.includes('rate_limit') || errorMessage.includes('429') || errorMessage.includes('quota')) {
+        return "I'm currently experiencing high demand. Please wait a moment and try again.";
+      }
+
+      if (errorMessage.includes('session not found') || errorMessage.includes('storage') || errorMessage.includes('database')) {
+        console.error('CRITICAL: Storage failure during message processing');
+        return "There was an issue saving your conversation. Your message may not have been saved. Please try again.";
+      }
+
+      if (errorMessage.includes('authentication') || errorMessage.includes('401') || errorMessage.includes('api key')) {
+        return "There's a configuration issue with the service. Please contact support.";
+      }
+
+      if (errorMessage.includes('timeout') || errorMessage.includes('econnrefused') || errorMessage.includes('network')) {
+        return "I'm having trouble connecting to external services. Please try again in a moment.";
+      }
+
+      // For unexpected errors, log with full context for debugging
+      console.error("Unexpected error details:", {
+        connectionId,
+        messageLength: userMessage.length,
+        contextSize: context.messages.length,
+        error: err.message,
+      });
+
       return "I'm having trouble processing your request right now. Please try again later.";
     }
   }
@@ -883,22 +873,8 @@ Remember: You exist to demonstrate MCP tools. ALWAYS use them for data! Respond 
   /**
    * Clear conversation context for a connection
    */
-  clearContext(connectionId: string): void {
-    this.conversationContexts.delete(connectionId);
-    console.log(`🧹 Cleared context for connection ${connectionId}`);
-  }
-
-  /**
-   * Clean up expired contexts
-   */
-  private cleanupExpiredContexts(): void {
-    const now = Date.now();
-    for (const [connectionId, context] of this.conversationContexts) {
-      if (now - context.lastUpdated > this.CONTEXT_EXPIRATION_MS) {
-        this.conversationContexts.delete(connectionId);
-        console.log(`🧹 Expired context removed for ${connectionId}`);
-      }
-    }
+  async clearContext(connectionId: string): Promise<void> {
+    await this.storage.clearContext(connectionId);
   }
 
   /**
@@ -974,8 +950,18 @@ Où souhaitez-vous voyager ? Indiquez-moi simplement votre destination et vos da
   }
 
   async cleanup() {
+    const errors: Error[] = [];
+
     for (const client of this.mcpClients) {
-      await client.close();
+      try {
+        await client.close();
+      } catch (error) {
+        errors.push(error instanceof Error ? error : new Error(String(error)));
+      }
+    }
+
+    if (errors.length > 0) {
+      console.error(`⚠️ ${errors.length} MCP clients failed to close:`, errors.map(e => e.message));
     }
   }
 }
