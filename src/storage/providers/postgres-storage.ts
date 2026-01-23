@@ -201,7 +201,7 @@ export class PostgresStorageProvider implements StorageProvider {
     const maxSeqResult = await messages
       .createQueryBuilder('msg')
       .select('MAX(msg.sequenceNumber)', 'maxSeq')
-      .where('msg.session = :sessionId', { sessionId: session.id })
+      .where('msg.sessionId = :sessionId', { sessionId: session.id })
       .getRawOne();
 
     const existingMaxSeq = maxSeqResult?.maxSeq ?? -1;

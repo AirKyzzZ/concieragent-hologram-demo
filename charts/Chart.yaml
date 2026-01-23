@@ -16,13 +16,13 @@ keywords:
   - ai
   - mcp
 
-home: https://github.com/your-org/concieragent
+home: https://github.com/AirKyzzZ/concieragent-hologram-demo
 sources:
-  - https://github.com/your-org/concieragent
+  - https://github.com/AirKyzzZ/concieragent-hologram-demo
 
 maintainers:
   - name: Maxime Mansiet
-    email: maxime@example.com
+    email: maxime.mansiet@gmail.com
 
 # Dependencies - VS Agent chart for DIDComm/Hologram protocol handling
 dependencies:

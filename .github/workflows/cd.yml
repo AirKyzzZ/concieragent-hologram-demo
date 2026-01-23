@@ -22,6 +22,11 @@ on:
         required: false
         default: 'false'
         type: boolean
+      version:
+        description: 'Version to deploy (required when deploy_only is true)'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────
@@ -163,8 +168,34 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: always() && (needs.build.result == 'success' || github.event.inputs.deploy_only == 'true')
+    outputs:
+      effective_version: ${{ steps.validate-version.outputs.version }}
 
     steps:
+      - name: Validate Version
+        id: validate-version
+        env:
+          BUILD_VERSION: ${{ needs.build.outputs.version }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          DEPLOY_ONLY: ${{ github.event.inputs.deploy_only }}
+        run: |
+          # Determine effective version
+          if [ -n "$BUILD_VERSION" ]; then
+            VERSION="$BUILD_VERSION"
+            echo "Using build version: $VERSION"
+          elif [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+            echo "Using input version: $VERSION"
+          elif [ "$DEPLOY_ONLY" == "true" ]; then
+            echo "❌ Error: deploy_only is true but no version was provided"
+            echo "Please provide a version when using deploy_only mode"
+            exit 1
+          else
+            VERSION="0.1.0"
+            echo "Using fallback version: $VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -176,8 +207,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Chart Version
+        env:
+          VERSION: ${{ steps.validate-version.outputs.version }}
         run: |
-          VERSION="${{ needs.build.outputs.version || '0.1.0' }}"
           sed -i "s/^version:.*/version: v$VERSION/" ./charts/Chart.yaml
           sed -i "s/^appVersion:.*/appVersion: \"$VERSION\"/" ./charts/Chart.yaml
           echo "📋 Updated Chart.yaml with version: v$VERSION"
@@ -189,7 +221,7 @@ jobs:
 
       - name: Package and Push Helm Chart
         run: |
-          VERSION="${{ needs.build.outputs.version || '0.1.0' }}"
+          VERSION="${{ steps.validate-version.outputs.version }}"
           CHART_NAME=$(grep '^name:' ./charts/Chart.yaml | awk '{print $2}')
           
           # Update dependencies
