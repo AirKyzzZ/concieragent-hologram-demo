@@ -1,0 +1,35 @@
+# Docker Compose for local development with PostgreSQL and Redis
+# Usage: docker compose up -d postgres redis
+# Then run: STORAGE_PROVIDER=postgres npm run dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: concieragent-postgres
+    environment:
+      POSTGRES_USER: concieragent
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: concieragent
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U concieragent -d concieragent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: concieragent-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
