@@ -34,13 +34,6 @@ export function createStorageProvider(
 }
 
 /**
- * Get the configured storage provider from environment variables
- */
-export function getConfiguredStorageProvider(): StorageProvider {
-  return createStorageProvider();
-}
-
-/**
  * Check which storage providers are available based on configuration
  */
 export function getAvailableStorageProviders(): { type: StorageProviderType; configured: boolean }[] {

@@ -21,6 +21,7 @@ export class PostgresStorageProvider implements StorageProvider {
   private sessionRepository: Repository<SessionEntity> | null = null;
   private messageRepository: Repository<MessageEntity> | null = null;
   private redis: RedisClientType | null = null;
+  private redisDisabled = false; // Track if Redis was disabled due to errors
 
   private readonly config: Required<
     Pick<
@@ -33,7 +34,20 @@ export class PostgresStorageProvider implements StorageProvider {
   };
 
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private consecutiveCleanupFailures = 0;
+  private readonly MAX_CLEANUP_FAILURES = 3;
   private readonly CACHE_TTL_SECONDS = 300; // 5 minutes cache
+
+  /**
+   * Ensure repositories are initialized before use
+   * @throws Error if not initialized
+   */
+  private ensureInitialized(): { sessions: Repository<SessionEntity>; messages: Repository<MessageEntity> } {
+    if (!this.sessionRepository || !this.messageRepository) {
+      throw new Error('PostgresStorageProvider not initialized. Call initialize() first.');
+    }
+    return { sessions: this.sessionRepository, messages: this.messageRepository };
+  }
 
   constructor(config?: StorageProviderConfig) {
     this.config = {
@@ -62,7 +76,7 @@ export class PostgresStorageProvider implements StorageProvider {
       username: this.config.postgresUser,
       password: this.config.postgresPassword,
       entities: [SessionEntity, MessageEntity],
-      synchronize: true, // Auto-create tables (use migrations in production)
+      synchronize: process.env.NODE_ENV !== 'production', // Auto-create tables in dev only
       logging: process.env.NODE_ENV === 'development',
     });
 
@@ -77,9 +91,21 @@ export class PostgresStorageProvider implements StorageProvider {
       await this.initializeRedis();
     }
 
-    // Start cleanup interval (every hour)
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupExpiredSessions().catch(console.error);
+    // Start cleanup interval (every hour) - clear any existing interval first
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+    this.cleanupInterval = setInterval(async () => {
+      try {
+        await this.cleanupExpiredSessions();
+        this.consecutiveCleanupFailures = 0;
+      } catch (error) {
+        this.consecutiveCleanupFailures++;
+        console.error(`❌ Cleanup failed (attempt ${this.consecutiveCleanupFailures}/${this.MAX_CLEANUP_FAILURES}):`, error);
+        if (this.consecutiveCleanupFailures >= this.MAX_CLEANUP_FAILURES) {
+          console.error('💀 CRITICAL: Session cleanup has failed repeatedly. Manual intervention may be required.');
+        }
+      }
     }, 60 * 60 * 1000);
 
     console.log('🗄️ PostgreSQL storage initialized');
@@ -94,7 +120,9 @@ export class PostgresStorageProvider implements StorageProvider {
       this.redis = createClient({ url: redisUrl });
 
       this.redis.on('error', (err) => {
-        console.error('❌ Redis error:', err);
+        console.error('❌ Redis error, disabling cache:', err);
+        this.redis = null;
+        this.redisDisabled = true;
       });
 
       await this.redis.connect();
@@ -106,6 +134,8 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   async getOrCreateContext(connectionId: string): Promise<ConversationContext> {
+    const { sessions } = this.ensureInitialized();
+
     // Try cache first
     const cached = await this.getCachedContext(connectionId);
     if (cached) {
@@ -113,13 +143,17 @@ export class PostgresStorageProvider implements StorageProvider {
     }
 
     // Load from database
-    const session = await this.sessionRepository!.findOne({
+    const session = await sessions.findOne({
       where: { connectionId },
       relations: ['messages'],
       order: { messages: { sequenceNumber: 'ASC' } },
     });
 
     if (session && session.expiresAt > new Date()) {
+      // Renew session expiration on read (touch the session)
+      session.expiresAt = new Date(Date.now() + this.config.sessionExpirationDays * 24 * 60 * 60 * 1000);
+      await sessions.save(session);
+
       const context = this.sessionToContext(session);
       await this.cacheContext(connectionId, context);
       return context;
@@ -129,13 +163,13 @@ export class PostgresStorageProvider implements StorageProvider {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + this.config.sessionExpirationDays * 24 * 60 * 60 * 1000);
 
-    const newSession = this.sessionRepository!.create({
+    const newSession = sessions.create({
       connectionId,
       extractedInfo: {},
       expiresAt,
     });
 
-    await this.sessionRepository!.save(newSession);
+    await sessions.save(newSession);
 
     const context: ConversationContext = {
       messages: [],
@@ -148,22 +182,23 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   async saveContext(connectionId: string, context: ConversationContext): Promise<void> {
-    const session = await this.sessionRepository!.findOne({
+    const { sessions, messages } = this.ensureInitialized();
+
+    const session = await sessions.findOne({
       where: { connectionId },
     });
 
     if (!session) {
-      console.error(`❌ Session not found for connection ${connectionId}`);
-      return;
+      throw new Error(`Session not found for connection ${connectionId}. Context save failed - potential data loss.`);
     }
 
     // Update session metadata
     session.extractedInfo = context.extractedInfo;
     session.expiresAt = new Date(Date.now() + this.config.sessionExpirationDays * 24 * 60 * 60 * 1000);
-    await this.sessionRepository!.save(session);
+    await sessions.save(session);
 
     // Get the highest sequence number in DB for this session
-    const maxSeqResult = await this.messageRepository!
+    const maxSeqResult = await messages
       .createQueryBuilder('msg')
       .select('MAX(msg.sequenceNumber)', 'maxSeq')
       .where('msg.session = :sessionId', { sessionId: session.id })
@@ -177,9 +212,9 @@ export class PostgresStorageProvider implements StorageProvider {
 
     if (newMessages.length > 0) {
       const messageEntities = newMessages.map((msg, index) => {
-        const entity = this.messageRepository!.create({
+        const entity = messages.create({
           role: msg.role,
-          content: msg.content,
+          content: msg.content ?? '',
           toolCallId: msg.toolCallId,
           toolCalls: msg.toolCalls,
           sequenceNumber: existingCount + index,
@@ -188,7 +223,7 @@ export class PostgresStorageProvider implements StorageProvider {
         return entity;
       });
 
-      await this.messageRepository!.save(messageEntities);
+      await messages.save(messageEntities);
     }
 
     // Prune old messages if exceeding limit
@@ -196,7 +231,7 @@ export class PostgresStorageProvider implements StorageProvider {
     if (totalMessages > this.config.maxHistoryMessages * 2) {
       const deleteCount = totalMessages - this.config.maxHistoryMessages;
       // Find oldest messages to delete
-      const messagesToDelete = await this.messageRepository!.find({
+      const messagesToDelete = await messages.find({
         where: { sessionId: session.id },
         order: { sequenceNumber: 'ASC' },
         take: deleteCount,
@@ -205,25 +240,25 @@ export class PostgresStorageProvider implements StorageProvider {
 
       if (messagesToDelete.length > 0) {
         const idsToDelete = messagesToDelete.map((m) => m.id);
-        await this.messageRepository!.delete(idsToDelete);
+        await messages.delete(idsToDelete);
       }
     }
 
-    await this.sessionRepository!.save(session);
-
-    // Update cache
+    // Update cache (removed duplicate session save)
     context.lastUpdated = Date.now();
     await this.cacheContext(connectionId, context);
   }
 
   async clearContext(connectionId: string): Promise<void> {
-    await this.sessionRepository!.delete({ connectionId });
+    const { sessions } = this.ensureInitialized();
+    await sessions.delete({ connectionId });
     await this.invalidateCache(connectionId);
     console.log(`🧹 Cleared context for connection ${connectionId}`);
   }
 
   async cleanupExpiredSessions(): Promise<number> {
-    const result = await this.sessionRepository!.delete({
+    const { sessions } = this.ensureInitialized();
+    const result = await sessions.delete({
       expiresAt: LessThan(new Date()),
     });
 
@@ -244,19 +279,37 @@ export class PostgresStorageProvider implements StorageProvider {
   }
 
   async close(): Promise<void> {
+    const errors: Error[] = [];
+
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
 
     if (this.redis) {
-      await this.redis.quit();
+      try {
+        await this.redis.quit();
+      } catch (error) {
+        errors.push(new Error(`Redis close failed: ${error}`));
+      }
       this.redis = null;
     }
 
     if (this.dataSource) {
-      await this.dataSource.destroy();
+      try {
+        await this.dataSource.destroy();
+      } catch (error) {
+        errors.push(new Error(`PostgreSQL close failed: ${error}`));
+      }
       this.dataSource = null;
+    }
+
+    // Reset repositories
+    this.sessionRepository = null;
+    this.messageRepository = null;
+
+    if (errors.length > 0) {
+      console.error('⚠️ Errors during storage shutdown:', errors.map(e => e.message));
     }
 
     console.log('🗄️ PostgreSQL storage closed');

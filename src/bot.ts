@@ -10,6 +10,7 @@ const port = 4001
 // Storage provider will be initialized asynchronously
 let storage: StorageProvider | null = null
 let agent: TravelAgent | null = null
+let agentDegraded = false // Track if agent is running without MCP tools
 
 // Define the root path explicitly based on where the code is running
 // src/bot.ts is in src/, so we go up two levels to get to the root
@@ -37,6 +38,37 @@ const VS_AGENT_URL = process.env.VS_AGENT_URL || 'http://localhost:3000'
 
 app.use(express.json())
 
+/**
+ * Send a message to a connection via VS Agent Admin API
+ * @returns true if successful, false otherwise
+ */
+async function sendMessageToConnection(connectionId: string, content: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${VS_AGENT_URL}/v1/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'text', connectionId, content })
+    })
+
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => 'Unknown error')
+      console.error(`❌ Failed to send message to VS Agent:`, {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorBody,
+        connectionId,
+      })
+      return false
+    }
+
+    console.log(`✅ Sent message to connection ${connectionId}`)
+    return true
+  } catch (error) {
+    console.error(`❌ Failed to send message to connection ${connectionId}:`, error)
+    return false
+  }
+}
+
 // POST /message-received - Webhook endpoint for VS Agent
 app.post('/message-received', async (req, res) => {
   try {
@@ -46,34 +78,26 @@ app.post('/message-received', async (req, res) => {
       return
     }
 
-    const message = req.body.message
-    const connectionId = message.connectionId
-    const content = message.content
+    // Validate request body
+    const message = req.body?.message
+    if (!message?.connectionId || !message?.content) {
+      res.status(400).json({ error: 'Missing connectionId or content in message' })
+      return
+    }
 
+    const { connectionId, content } = message
     console.log(`📨 Message received from connection ${connectionId}: ${content}`)
 
     // Use TravelAgent to generate response
     const agentResponse = await agent.processMessage(content, connectionId)
 
     // Send response back to the user via VS Agent Admin API
-    const responseMessage = {
-      type: 'text',
-      connectionId: connectionId,
-      content: agentResponse
-    }
+    const sent = await sendMessageToConnection(connectionId, agentResponse)
 
-    const response = await fetch(`${VS_AGENT_URL}/v1/message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(responseMessage)
-    })
-
-    if (!response.ok) {
-      console.error(`❌ Failed to send message: ${response.statusText}`)
-    } else {
-      console.log(`✅ Sent response to connection ${connectionId}`)
+    if (!sent) {
+      // Log the failure but still return 200 to webhook caller
+      // (the message was processed, just delivery failed)
+      console.error(`❌ Message processed but delivery to ${connectionId} failed`)
     }
 
     res.status(200).end()
@@ -85,10 +109,12 @@ app.post('/message-received', async (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
+  const status = !agent ? 'initializing' : agentDegraded ? 'degraded' : 'ok'
   res.json({
-    status: agent ? 'ok' : 'initializing',
+    status,
     service: 'concieragent',
-    storage: storage?.name ?? 'not initialized'
+    storage: storage?.name ?? 'not initialized',
+    mcpToolsAvailable: agent && !agentDegraded
   })
 })
 
@@ -119,36 +145,26 @@ app.post('/connection-established', async (req, res) => {
       return
     }
 
-    const connectionId = req.body.connectionId
-    const preferredLanguage = req.body.language || 'en'
+    const connectionId = req.body?.connectionId
+    if (!connectionId) {
+      res.status(400).json({ error: 'Missing connectionId' })
+      return
+    }
 
+    const preferredLanguage = req.body.language || 'en'
     console.log(`🤝 New connection established: ${connectionId}`)
 
     // Get localized welcome message
     const welcomeMessage = agent.getWelcomeMessage(preferredLanguage)
-    
+
     // Send welcome message to the user via VS Agent Admin API
-    const responseMessage = {
-      type: 'text',
-      connectionId: connectionId,
-      content: welcomeMessage
-    }
+    const sent = await sendMessageToConnection(connectionId, welcomeMessage)
 
-    const response = await fetch(`${VS_AGENT_URL}/v1/message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(responseMessage)
-    })
-
-    if (!response.ok) {
-      console.error(`❌ Failed to send welcome message: ${response.statusText}`)
-    } else {
+    if (sent) {
       console.log(`✅ Sent welcome message to connection ${connectionId} (${preferredLanguage})`)
     }
 
-    res.status(200).json({ success: true, language: preferredLanguage })
+    res.status(200).json({ success: sent, language: preferredLanguage })
   } catch (error) {
     console.error('❌ Error sending welcome message:', error)
     res.status(500).json({ error: 'Internal server error' })
@@ -168,27 +184,45 @@ app.listen(port, async () => {
 
   // Initialize storage provider
   console.log('🔄 Initializing storage provider...')
+  const allowMemoryFallback = process.env.ALLOW_MEMORY_FALLBACK !== 'false'
+
   try {
     storage = createStorageProvider()
     await storage.initialize()
     console.log(`✅ Storage initialized: ${storage.name}`)
   } catch (error) {
     console.error('❌ Failed to initialize storage:', error)
-    console.log('⚠️ Falling back to memory storage')
-    storage = createStorageProvider('memory')
-    await storage.initialize()
+
+    if (allowMemoryFallback) {
+      console.warn('⚠️ DEGRADED MODE: Falling back to memory storage. DATA WILL NOT PERSIST!')
+      storage = createStorageProvider('memory')
+      await storage.initialize()
+    } else {
+      console.error('💀 Storage is required. Set ALLOW_MEMORY_FALLBACK=true to allow memory-only mode.')
+      process.exit(1)
+    }
   }
 
   // Initialize Travel Agent with storage provider
   console.log('🔄 Initializing Travel Agent (connecting to MCP servers)...')
   agent = new TravelAgent(storage)
 
-  agent.initialize().then(() => {
+  const allowDegradedMode = process.env.ALLOW_DEGRADED_MODE !== 'false'
+
+  try {
+    await agent.initialize()
     console.log('✅ Travel Agent ready!')
-  }).catch(error => {
+  } catch (error) {
     console.error('❌ Failed to initialize Travel Agent:', error)
-    console.log('⚠️ Bot will continue but MCP features may not work')
-  })
+
+    if (allowDegradedMode) {
+      console.warn('⚠️ DEGRADED MODE: Bot running WITHOUT MCP tools. Responses will be limited.')
+      agentDegraded = true
+    } else {
+      console.error('💀 MCP tools are required. Set ALLOW_DEGRADED_MODE=true to run without tools.')
+      process.exit(1)
+    }
+  }
 })
 
 // Keep process alive
@@ -198,14 +232,25 @@ process.stdin.resume()
 const shutdown = async () => {
   console.log('🛑 Shutting down...')
 
+  // Cleanup agent first (closes MCP connections)
   if (agent) {
-    await agent.cleanup()
+    try {
+      await agent.cleanup()
+    } catch (error) {
+      console.error('⚠️ Agent cleanup error:', error)
+    }
   }
 
+  // Then close storage connections
   if (storage) {
-    await storage.close()
+    try {
+      await storage.close()
+    } catch (error) {
+      console.error('⚠️ Storage close error:', error)
+    }
   }
 
+  console.log('✅ Shutdown complete')
   process.exit(0)
 }
 

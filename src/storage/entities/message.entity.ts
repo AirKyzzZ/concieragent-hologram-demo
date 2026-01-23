@@ -12,6 +12,7 @@ import { SessionEntity } from './session.entity';
 import type { LLMToolCall, MessageRole } from '../../providers/types';
 
 @Entity('messages')
+@Index('idx_messages_session_id', ['sessionId'])
 export class MessageEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -20,7 +21,6 @@ export class MessageEntity {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'sessionId' })
-  @Index('idx_messages_session_id')
   session!: SessionEntity;
 
   @RelationId((message: MessageEntity) => message.session)

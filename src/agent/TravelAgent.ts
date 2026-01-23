@@ -254,51 +254,51 @@ export class TravelAgent {
   /**
    * Sanitize and fix MCP tool schemas to be compatible with OpenAI's function calling API
    */
-  private sanitizeToolSchema(schema: any): any {
+  private sanitizeToolSchema(schema: any, toolName?: string): any {
     if (!schema || typeof schema !== 'object') {
       return schema;
     }
 
-    // Create a deep copy to avoid mutating the original
-    const sanitized = JSON.parse(JSON.stringify(schema));
+    // Create a deep copy to avoid mutating the original (Node 17+)
+    const sanitized = structuredClone(schema);
 
     // Recursively fix array schemas missing 'items'
-    const fixSchema = (obj: any): any => {
+    const fixSchema = (obj: any, path = 'root'): any => {
       if (Array.isArray(obj)) {
-        return obj.map(fixSchema);
+        return obj.map((item: any, i: number) => fixSchema(item, `${path}[${i}]`));
       }
-      
+
       if (obj && typeof obj === 'object') {
         // Fix arrays without items
         if (obj.type === 'array' && !obj.items) {
-          console.warn(`⚠️ Fixing array schema missing items, defaulting to string array`);
+          console.warn(`⚠️ Fixing array schema at ${path} for tool '${toolName ?? 'unknown'}', defaulting to string array`);
           obj.items = { type: 'string' };
         }
         
         // Fix anyOf/oneOf/allOf arrays
         if (obj.anyOf && Array.isArray(obj.anyOf)) {
-          obj.anyOf = obj.anyOf.map(fixSchema);
+          obj.anyOf = obj.anyOf.map((item: any, i: number) => fixSchema(item, `${path}.anyOf[${i}]`));
         }
         if (obj.oneOf && Array.isArray(obj.oneOf)) {
-          obj.oneOf = obj.oneOf.map(fixSchema);
+          obj.oneOf = obj.oneOf.map((item: any, i: number) => fixSchema(item, `${path}.oneOf[${i}]`));
         }
         if (obj.allOf && Array.isArray(obj.allOf)) {
-          obj.allOf = obj.allOf.map(fixSchema);
+          obj.allOf = obj.allOf.map((item: any, i: number) => fixSchema(item, `${path}.allOf[${i}]`));
         }
-        
+
         // Recursively fix properties
         if (obj.properties && typeof obj.properties === 'object') {
           for (const key in obj.properties) {
-            obj.properties[key] = fixSchema(obj.properties[key]);
+            obj.properties[key] = fixSchema(obj.properties[key], `${path}.${key}`);
           }
         }
-        
+
         // Fix items in arrays
         if (obj.items) {
-          obj.items = fixSchema(obj.items);
+          obj.items = fixSchema(obj.items, `${path}.items`);
         }
       }
-      
+
       return obj;
     };
 
@@ -339,7 +339,7 @@ export class TravelAgent {
         for (const tool of toolsResult.tools) {
           try {
             // Sanitize the schema to fix any invalid structures
-            const sanitizedSchema = this.sanitizeToolSchema(tool.inputSchema);
+            const sanitizedSchema = this.sanitizeToolSchema(tool.inputSchema, tool.name);
             
             // Use provider-agnostic LLMTool format
             this.tools.push({
@@ -834,8 +834,38 @@ Remember: You exist to demonstrate MCP tools. ALWAYS use them for data! Respond 
       console.log(`💬 Response generated for connection ${connectionId} (${cleanedResponse.length} chars)`);
       return cleanedResponse;
 
-    } catch (error) {
-      console.error("Error in TravelAgent processMessage:", error);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error("Error in TravelAgent processMessage:", err.message, err.stack);
+
+      // Classify the error for appropriate user response
+      const errorMessage = err.message.toLowerCase();
+
+      if (errorMessage.includes('rate_limit') || errorMessage.includes('429') || errorMessage.includes('quota')) {
+        return "I'm currently experiencing high demand. Please wait a moment and try again.";
+      }
+
+      if (errorMessage.includes('session not found') || errorMessage.includes('storage') || errorMessage.includes('database')) {
+        console.error('CRITICAL: Storage failure during message processing');
+        return "There was an issue saving your conversation. Your message may not have been saved. Please try again.";
+      }
+
+      if (errorMessage.includes('authentication') || errorMessage.includes('401') || errorMessage.includes('api key')) {
+        return "There's a configuration issue with the service. Please contact support.";
+      }
+
+      if (errorMessage.includes('timeout') || errorMessage.includes('econnrefused') || errorMessage.includes('network')) {
+        return "I'm having trouble connecting to external services. Please try again in a moment.";
+      }
+
+      // For unexpected errors, log with full context for debugging
+      console.error("Unexpected error details:", {
+        connectionId,
+        messageLength: userMessage.length,
+        contextSize: context.messages.length,
+        error: err.message,
+      });
+
       return "I'm having trouble processing your request right now. Please try again later.";
     }
   }
@@ -920,8 +950,18 @@ Où souhaitez-vous voyager ? Indiquez-moi simplement votre destination et vos da
   }
 
   async cleanup() {
+    const errors: Error[] = [];
+
     for (const client of this.mcpClients) {
-      await client.close();
+      try {
+        await client.close();
+      } catch (error) {
+        errors.push(error instanceof Error ? error : new Error(String(error)));
+      }
+    }
+
+    if (errors.length > 0) {
+      console.error(`⚠️ ${errors.length} MCP clients failed to close:`, errors.map(e => e.message));
     }
   }
 }
